@@ -1,0 +1,378 @@
+{% extends 'base.html' %}
+
+{% block title %}Manajemen Akun Pengguna - PLN Icon+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8">
+
+    <!-- Header Banner -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-pln-blue flex items-center justify-center text-lg border border-blue-100 flex-shrink-0">
+                <i class="fa-solid fa-users-gear"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2 text-xs font-semibold text-pln-blue uppercase tracking-wider mb-0.5">
+                    <span>Akses Administrator NOC</span>
+                </div>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Manajemen Akun Pengguna</h1>
+                <p class="text-xs text-slate-500 mt-0.5">Kelola akun login sistem, buat pengguna baru, dan atur peran Admin atau Viewer</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button onclick="openCreateUserModal()" class="bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs flex items-center space-x-2 transition-all cursor-pointer">
+                <i class="fa-solid fa-user-plus text-xs"></i>
+                <span>Buat Akun Baru</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Alert Message -->
+    {% if message %}
+    <div class="p-4 rounded-xl text-xs font-medium flex items-center space-x-3 {% if status_type == 'success' %}bg-emerald-50 border border-emerald-200 text-emerald-800{% else %}bg-rose-50 border border-rose-200 text-rose-800{% endif %}">
+        <i class="fa-solid {% if status_type == 'success' %}fa-circle-check text-emerald-600{% else %}fa-circle-xmark text-rose-600{% endif %} text-base"></i>
+        <span>{{ message }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Users Table Card -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+        <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+                <h2 class="text-base font-bold text-slate-900">Daftar Pengguna Terdaftar</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Admin dapat mengedit hak akses, mereset password, atau menghapus pengguna</p>
+            </div>
+            <span class="text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-xl self-start sm:self-auto">
+                Total {{ users|length }} Akun Terdaftar
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+                <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 text-xs">
+                    <tr>
+                        <th class="px-5 py-3.5">ID</th>
+                        <th class="px-5 py-3.5">Username</th>
+                        <th class="px-5 py-3.5">Nama Lengkap</th>
+                        <th class="px-5 py-3.5">Peran / Hak Akses</th>
+                        <th class="px-5 py-3.5">Tanggal Dibuat</th>
+                        <th class="px-5 py-3.5 text-right">Aksi Manajemen</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for u in users %}
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="px-5 py-3.5 font-mono text-slate-400">#{{ u.id }}</td>
+                        <td class="px-5 py-3.5 whitespace-nowrap">
+                            <span class="font-bold text-slate-900 font-mono">{{ u.username }}</span>
+                            {% if current_user and current_user.id == u.id %}
+                            <span class="ml-1.5 text-[10px] font-semibold bg-blue-100 text-pln-blue px-1.5 py-0.2 rounded">Saya (Aktif)</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3.5 font-medium text-slate-800">{{ u.full_name }}</td>
+                        <td class="px-5 py-3.5 whitespace-nowrap">
+                            {% if u.role == 'admin' %}
+                            <span class="px-2.5 py-1 rounded-lg bg-blue-50 text-pln-blue font-bold text-xs border border-blue-200 flex items-center space-x-1.5 w-max shadow-2xs">
+                                <i class="fa-solid fa-user-shield text-xs"></i>
+                                <span>ADMINISTRATOR</span>
+                            </span>
+                            {% else %}
+                            <span class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold text-xs border border-amber-200 flex items-center space-x-1.5 w-max shadow-2xs">
+                                <i class="fa-solid fa-eye text-xs text-amber-600"></i>
+                                <span>VIEWER (Hanya Lihat)</span>
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3.5 text-slate-500 whitespace-nowrap">
+                            {{ u.created_at[:16] if u.created_at else '-' }}
+                        </td>
+                        <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end space-x-1.5">
+                                <button onclick="openEditUserModal({{ u|tojson|forceescape }})" class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs transition-all cursor-pointer">
+                                    <i class="fa-solid fa-pen text-xs mr-1 text-slate-400"></i> Edit / Reset
+                                </button>
+                                {% if not current_user or current_user.id != u.id %}
+                                <button onclick="deleteUserConfirm({{ u.id }}, '{{ u.username }}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-slate-200" title="Hapus Akun ini">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal: Buat Akun Pengguna Baru -->
+<div id="createUserModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+        <button onclick="closeCreateUserModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="mb-4">
+            <h3 class="font-bold text-base text-slate-900 flex items-center space-x-2">
+                <i class="fa-solid fa-user-plus text-pln-blue"></i>
+                <span>Buat Akun Pengguna Baru</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Tambahkan akun baru untuk staf NOC atau pengguna lain</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('users_page') }}" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Nama Lengkap <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" name="full_name" required placeholder="Contoh: Budi Santoso"
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-medium">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Username (Unik) <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" name="username" required placeholder="Contoh: budi.n"
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-mono font-semibold">
+                <p class="text-[11px] text-slate-400 mt-1">Username digunakan untuk login ke dalam sistem.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Password Awal <span class="text-rose-500">*</span>
+                </label>
+                <input type="password" name="password" required placeholder="Minimal 6 karakter..."
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Peran / Hak Akses:</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="role" value="admin" class="peer sr-only">
+                        <div class="p-3 rounded-xl border border-slate-300 bg-white peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-pln-blue text-slate-600 transition-all text-center">
+                            <div class="font-bold text-xs flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-user-shield"></i>
+                                <span>ADMIN</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 mt-1">Bisa Edit & Kelola</div>
+                        </div>
+                    </label>
+
+                    <label class="cursor-pointer">
+                        <input type="radio" name="role" value="viewer" checked class="peer sr-only">
+                        <div class="p-3 rounded-xl border border-slate-300 bg-white peer-checked:border-amber-500 peer-checked:bg-amber-50 peer-checked:text-amber-800 text-slate-600 transition-all text-center">
+                            <div class="font-bold text-xs flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-eye"></i>
+                                <span>VIEWER</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 mt-1">Hanya Bisa Lihat</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeCreateUserModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all cursor-pointer">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer">
+                    <i class="fa-solid fa-floppy-disk text-xs"></i>
+                    <span>Simpan Akun Baru</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit / Reset Password User -->
+<div id="editUserModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+        <button onclick="closeEditUserModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="mb-4">
+            <h3 class="font-bold text-base text-slate-900">Edit Data / Reset Password User</h3>
+            <p id="editUserSub" class="text-xs text-slate-500 mt-0.5">Perbarui nama, peran, atau masukan password baru</p>
+        </div>
+
+        <form id="editUserForm" onsubmit="saveUserUpdate(event)" class="space-y-4">
+            <input type="hidden" id="editUserId">
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap</label>
+                <input type="text" id="editUserFullName" required
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-medium">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Peran / Hak Akses:</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="edit_role" value="admin" id="roleAdminRadio" class="peer sr-only">
+                        <div class="p-2.5 rounded-xl border border-slate-300 bg-white peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-pln-blue text-slate-600 transition-all text-center">
+                            <span class="font-bold text-xs"><i class="fa-solid fa-user-shield mr-1"></i>ADMIN</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="edit_role" value="viewer" id="roleViewerRadio" class="peer sr-only">
+                        <div class="p-2.5 rounded-xl border border-slate-300 bg-white peer-checked:border-amber-500 peer-checked:bg-amber-50 peer-checked:text-amber-800 text-slate-600 transition-all text-center">
+                            <span class="font-bold text-xs"><i class="fa-solid fa-eye mr-1"></i>VIEWER</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Reset Password Baru <span class="text-slate-400 font-normal">(Opsional)</span></label>
+                <input type="password" id="editUserResetPassword" placeholder="Kosongkan jika tidak ingin mengubah password..."
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeEditUserModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all cursor-pointer">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-xl shadow-xs transition-all cursor-pointer">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openCreateUserModal() {
+        const modal = document.getElementById('createUserModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeCreateUserModal() {
+        const modal = document.getElementById('createUserModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+        }
+    }
+
+    function openEditUserModal(user) {
+        document.getElementById('editUserId').value = user.id;
+        document.getElementById('editUserFullName').value = user.full_name || '';
+        document.getElementById('editUserSub').innerText = `Username: @${user.username}`;
+        document.getElementById('editUserResetPassword').value = '';
+
+        if (user.role === 'admin') {
+            document.getElementById('roleAdminRadio').checked = true;
+        } else {
+            document.getElementById('roleViewerRadio').checked = true;
+        }
+
+        const modal = document.getElementById('editUserModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeEditUserModal() {
+        const modal = document.getElementById('editUserModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+        }
+    }
+
+    async function saveUserUpdate(e) {
+        e.preventDefault();
+        const userId = document.getElementById('editUserId').value;
+        const fullName = document.getElementById('editUserFullName').value.trim();
+        const role = document.querySelector('input[name="edit_role"]:checked').value;
+        const resetPassword = document.getElementById('editUserResetPassword').value.trim();
+
+        try {
+            const res = await fetch(`/api/users/${userId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    full_name: fullName,
+                    role: role,
+                    reset_password: resetPassword
+                })
+            });
+            const result = await res.json();
+            if (result.success) {
+                Notify.toast({
+                    type: 'success',
+                    title: 'Akun Diperbarui',
+                    message: result.message
+                });
+                closeEditUserModal();
+                setTimeout(() => location.reload(), 800);
+            } else {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Gagal',
+                    message: result.error
+                });
+            }
+        } catch (err) {
+            Notify.toast({
+                type: 'error',
+                title: 'Kesalahan',
+                message: err.message
+            });
+        }
+    }
+
+    async function deleteUserConfirm(userId, username) {
+        const confirm = await Notify.confirm({
+            title: 'Hapus Akun Pengguna?',
+            text: `Apakah Anda yakin ingin menghapus akun @${username}? Pengguna ini tidak akan dapat login lagi.`,
+            confirmText: 'Ya, Hapus Akun',
+            cancelText: 'Batal',
+            isDanger: true
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await fetch(`/api/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                const result = await res.json();
+                if (result.success) {
+                    Notify.toast({
+                        type: 'success',
+                        title: 'Akun Dihapus',
+                        message: result.message
+                    });
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    Notify.toast({
+                        type: 'error',
+                        title: 'Gagal Hapus',
+                        message: result.error
+                    });
+                }
+            } catch (err) {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Kesalahan',
+                    message: err.message
+                });
+            }
+        }
+    }
+</script>
+{% endblock %}

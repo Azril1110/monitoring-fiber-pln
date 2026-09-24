@@ -1,0 +1,625 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Monitoring - PLN Icon+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8">
+
+    <!-- Top Executive Header & Operational Status Banner -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+                <div class="flex items-center space-x-2 text-xs font-semibold text-pln-blue uppercase tracking-wider mb-1">
+                    <span class="w-2 h-2 rounded-full bg-pln-blue"></span>
+                    <span>PLN Icon+ Network Operations Center</span>
+                </div>
+                <h1 class="tracking-tight leading-none">
+                    <span class="block font-black text-slate-900 whitespace-nowrap" style="font-size: clamp(20px, 2.7vw, 38px);">Monitoring Transmisi Fiber Optik</span>
+                    <span class="block font-black text-pln-blue whitespace-nowrap mt-1" style="font-size: clamp(16px, 2.2vw, 30px);">PLN Icon Plus</span>
+                </h1>
+                <p class="text-slate-600 font-normal leading-relaxed mt-2" style="font-size: clamp(12px, 1vw, 14px);">
+                    Pemantauan operasional loop ring transmisi fiber optik, status kontinuitas kabel (Aman / Putus), dan insiden lapangan secara real-time.
+                </p>
+            </div>
+            
+            <div class="flex items-center space-x-2.5 flex-shrink-0">
+                <button onclick="location.reload()" class="bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 shadow-2xs flex items-center space-x-2 transition-all">
+                    <i class="fa-solid fa-rotate-right text-slate-400"></i>
+                    <span>Segarkan Data</span>
+                </button>
+                {% if current_user and current_user.role == 'admin' %}
+                <button onclick="openNewRingModal()" class="bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs flex items-center space-x-2 transition-all">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span>Tambah Ring Baru</span>
+                </button>
+                {% else %}
+                <span class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold flex items-center space-x-1.5">
+                    <i class="fa-solid fa-eye text-slate-400"></i>
+                    <span>Mode Viewer</span>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Dynamic NOC Incident Banner -->
+        <div class="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {% if data.total_broken_segments > 0 %}
+            <div class="flex items-center space-x-3 bg-rose-50/70 border border-rose-200/90 text-rose-900 px-4 py-2.5 rounded-xl text-xs font-medium w-full">
+                <div class="w-7 h-7 rounded-lg bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                </div>
+                <div class="flex-grow">
+                    <span class="font-semibold text-rose-800">Status Gangguan:</span>
+                    <span>Terdeteksi <strong>{{ data.total_broken_segments }} Segmen Kabel Fiber Putus</strong> pada jaringan ring. Perlu penanganan teknisi di lapangan.</span>
+                </div>
+            </div>
+            {% else %}
+            <div class="flex items-center space-x-3 bg-emerald-50/70 border border-emerald-200/90 text-emerald-900 px-4 py-2.5 rounded-xl text-xs font-medium w-full">
+                <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    <i class="fa-solid fa-check text-xs"></i>
+                </div>
+                <div class="flex-grow">
+                    <span class="font-semibold text-emerald-800">Jaringan Normal:</span>
+                    <span>Semua ring kabel fiber optik berada dalam status kontinuitas aman 100%. Tidak ada gangguan putus.</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Top Metric Overview Cards (Clean Standard Corporate Style) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Total Ring -->
+        <div class="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Total Ring Transmisi</span>
+                    <span class="w-9 h-9 rounded-xl bg-blue-50 text-pln-blue flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-circle-nodes"></i>
+                    </span>
+                </div>
+                <div class="mt-3 flex items-baseline space-x-2">
+                    <span class="text-3xl font-bold text-slate-900">{{ data.total_rings }}</span>
+                    <span class="text-xs text-slate-500 font-medium">Loop Jaringan</span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 flex items-center justify-between">
+                <span>{{ data.total_segments }} Segmen Kabel</span>
+                <span class="text-emerald-600 font-semibold">Aktif Terhubung</span>
+            </div>
+        </div>
+
+        <!-- Total Jarak (KM) -->
+        <div class="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Panjang Bentangan FO</span>
+                    <span class="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-ruler-combined"></i>
+                    </span>
+                </div>
+                <div class="mt-3 flex items-baseline space-x-2">
+                    <span class="text-3xl font-bold text-slate-900">{{ data.total_distance_km }}</span>
+                    <span class="text-sm font-semibold text-slate-600">KM</span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 flex items-center justify-between">
+                <span>{{ "{:,.0f}".format(data.total_distance_m|default(data.total_distance_km * 1000)|default(0)) }} Meter</span>
+                <span class="text-slate-500 font-medium">Total Akumulasi</span>
+            </div>
+        </div>
+
+        <!-- Tingkat Kesehatan Jaringan (% Kabel Aman) -->
+        <div class="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Kesehatan Jaringan</span>
+                    <span class="w-9 h-9 rounded-xl {% if data.overall_health_pct >= 90 %}bg-emerald-50 text-emerald-600{% elif data.overall_health_pct >= 70 %}bg-amber-50 text-amber-600{% else %}bg-rose-50 text-rose-600{% endif %} flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-heart-pulse"></i>
+                    </span>
+                </div>
+                <div class="mt-3 flex items-baseline justify-between">
+                    <div class="text-3xl font-bold {% if data.overall_health_pct >= 90 %}text-emerald-600{% elif data.overall_health_pct >= 70 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                        {{ data.overall_health_pct }}%
+                    </div>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-md {% if data.overall_health_pct >= 90 %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+                        {{ data.total_safe_segments|default(data.total_segments - data.total_broken_segments)|default(0) }}/{{ data.total_segments }} Aman
+                    </span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100">
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div class="{% if data.overall_health_pct >= 90 %}bg-emerald-500{% elif data.overall_health_pct >= 70 %}bg-amber-500{% else %}bg-rose-500{% endif %} h-2 rounded-full transition-all duration-500" style="width: {{ data.overall_health_pct }}%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segmen Putus & Insiden Aktif -->
+        <div class="bg-white border {% if data.total_broken_segments > 0 %}border-rose-300 bg-rose-50/10{% else %}border-slate-200{% endif %} hover:border-slate-300 rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-slate-500 uppercase">Insiden Kabel Putus</span>
+                    <span class="w-9 h-9 rounded-xl {% if data.total_broken_segments > 0 %}bg-rose-100 text-rose-600{% else %}bg-emerald-50 text-emerald-600{% endif %} flex items-center justify-center text-sm">
+                        <i class="fa-solid {% if data.total_broken_segments > 0 %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                    </span>
+                </div>
+                <div class="mt-3 flex items-baseline space-x-2">
+                    <span class="text-3xl font-bold {% if data.total_broken_segments > 0 %}text-rose-600{% else %}text-slate-900{% endif %}">{{ data.total_broken_segments }}</span>
+                    <span class="text-xs font-semibold {% if data.total_broken_segments > 0 %}text-rose-600{% else %}text-slate-500{% endif %}">
+                        {% if data.total_broken_segments > 0 %}Segmen Terputus{% else %}Semua Segmen Aman{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 flex items-center justify-between">
+                <span>{{ data.total_issues_count }} Catatan Kendala</span>
+                <span class="text-slate-700 font-medium">Di Lapangan</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Section 1: Progres Per Ring (Interactive Filter & Search) -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+        
+        <!-- Header & Filter Bar -->
+        <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">Progres Jaringan Per Ring</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Daftar loop transmisi fiber dengan persentase operasional, total bentangan, dan rute POP</p>
+            </div>
+
+            <!-- Controls: Search & Tabs -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <!-- Search box -->
+                <div class="relative min-w-[200px]">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
+                    <input type="text" id="ringSearchInput" oninput="filterRings()" placeholder="Cari nama atau kode ring..."
+                           class="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-pln-blue rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none transition-all">
+                </div>
+
+                <!-- Status Filter Tabs -->
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                    <button onclick="setRingFilter('all')" id="filterTabAll" class="px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs transition-all">
+                        Semua ({{ data.rings|length }})
+                    </button>
+                    <button onclick="setRingFilter('safe')" id="filterTabSafe" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition-all">
+                        Aman
+                    </button>
+                    <button onclick="setRingFilter('broken')" id="filterTabBroken" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition-all">
+                        Ada Putus
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid of Ring Cards -->
+        <div id="ringCardGrid" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for item in data.rings %}
+            <div class="ring-card bg-white border {% if item.broken_segments > 0 %}border-rose-300 ring-1 ring-rose-100{% else %}border-slate-200 hover:border-slate-300{% endif %} rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                 data-ring-name="{{ item.ring.name|lower }}"
+                 data-ring-code="{{ item.ring.code|lower }}"
+                 data-has-broken="{{ 'true' if item.broken_segments > 0 else 'false' }}">
+                
+                <div>
+                    <!-- Card Top Header -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-1.5">
+                            <span id="dashRingCode-{{ item.ring.id }}" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200">
+                                {{ item.ring.code }}
+                            </span>
+                            {% if current_user and current_user.role == 'admin' %}
+                            <button type="button" onclick="openDashEditRingModal({{ item.ring.id }}, {{ item.ring.name|tojson }}, {{ item.ring.code|tojson }}, {{ (item.ring.description or '')|tojson }})"
+                                    class="w-7 h-7 rounded-lg text-slate-400 hover:text-pln-blue hover:bg-blue-50 flex items-center justify-center transition-all cursor-pointer" title="Edit Informasi Ring">
+                                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if item.broken_segments > 0 %}
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center space-x-1.5 shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                            <span>Terputus</span>
+                        </span>
+                        {% else %}
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center space-x-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>Optimal 100%</span>
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <h3 id="dashRingName-{{ item.ring.id }}" class="text-sm sm:text-base font-bold text-slate-900 mt-3 leading-snug">{{ item.ring.name }}</h3>
+
+                    <!-- Visual Route Schematic Pill -->
+                    <div class="mt-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs flex items-center justify-between space-x-2">
+                        <div class="flex items-center space-x-1.5 truncate min-w-0" title="{{ item.pop1_name }}">
+                            <i class="fa-solid fa-server text-xs text-pln-blue flex-shrink-0"></i>
+                            <span class="font-medium text-slate-700 truncate text-xs">{{ item.pop1_name }}</span>
+                        </div>
+                        <div class="flex items-center space-x-1 text-slate-400 flex-shrink-0">
+                            <span class="text-xs">&bull;&bull;&bull;</span>
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </div>
+                        <div class="flex items-center space-x-1.5 truncate min-w-0 justify-end" title="{{ item.pop2_name }}">
+                            <i class="fa-solid fa-server text-xs text-amber-600 flex-shrink-0"></i>
+                            <span class="font-medium text-slate-700 truncate text-xs">{{ item.pop2_name }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar & Percentage -->
+                    <div class="mt-4 space-y-1.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-600 font-medium">Kontinuitas Jaringan</span>
+                            <span class="font-bold {% if item.progress_pct >= 90 %}text-emerald-600{% elif item.progress_pct >= 70 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                                {{ item.progress_pct }}%
+                            </span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div class="{% if item.progress_pct >= 90 %}bg-emerald-500{% elif item.progress_pct >= 70 %}bg-amber-500{% else %}bg-rose-500{% endif %} h-2 rounded-full transition-all duration-300"
+                                 style="width: {{ item.progress_pct }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Row (Equalized 4 Stats Boxes: Bentangan, Titik DCU, Kabel, Kendala) -->
+                    <div class="grid grid-cols-4 gap-1.5 sm:gap-2 mt-4 pt-3 border-t border-slate-100 text-center">
+                        <div class="bg-slate-50/70 p-2 rounded-xl">
+                            <div class="text-[11px] text-slate-500 uppercase font-medium">Bentangan</div>
+                            <div class="text-xs font-bold text-slate-900 mt-0.5">{{ item.total_distance_km }} KM</div>
+                        </div>
+                        <div class="bg-slate-50/70 p-2 rounded-xl">
+                            <div class="text-[11px] text-slate-500 uppercase font-medium">Titik DCU</div>
+                            <div class="text-xs font-bold text-slate-900 mt-0.5">{{ item.dcu_count }} Node</div>
+                        </div>
+                        <div class="bg-slate-50/70 p-2 rounded-xl">
+                            <div class="text-[11px] text-slate-500 uppercase font-medium">Kabel</div>
+                            <div class="text-xs font-bold {% if item.broken_segments > 0 %}text-rose-600{% else %}text-emerald-600{% endif %} mt-0.5">
+                                {{ item.safe_segments }}/{{ item.broken_segments }}
+                            </div>
+                        </div>
+                        <div class="bg-slate-50/70 p-2 rounded-xl">
+                            <div class="text-[11px] text-slate-500 uppercase font-medium">Kendala</div>
+                            <div class="text-xs font-bold {% if item.open_issues_count > 0 %}text-rose-600{% else %}text-slate-700{% endif %} mt-0.5">
+                                {{ item.open_issues_count }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-100">
+                    <a href="{{ url_for('monitoring_ring', ring_id=item.ring.id) }}"
+                       class="w-full py-2.5 px-3 bg-slate-50 hover:bg-pln-blue text-slate-700 hover:text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center space-x-2 border border-slate-200 hover:border-pln-blue shadow-2xs group">
+                        <span>Buka Monitoring & Topologi</span>
+                        <i class="fa-solid fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="noRingsFound" class="hidden p-12 text-center text-slate-400">
+            <i class="fa-solid fa-circle-nodes text-3xl text-slate-300 mb-2"></i>
+            <p class="text-sm font-semibold text-slate-700">Tidak ada ring yang sesuai kriteria pencarian.</p>
+            <p class="text-xs text-slate-400 mt-0.5">Coba ubah kata kunci atau ganti filter status di atas.</p>
+        </div>
+    </div>
+
+    <!-- Section 2: Detail Kendala & Gangguan Aktif Lintas Ring -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+        <div class="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">Detail Kendala & Gangguan Aktif</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Daftar permasalahan operasional lapangan dari seluruh ring yang memerlukan penanganan</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-semibold px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl">
+                    {{ data.recent_issues|length }} Kendala Tercatat
+                </span>
+            </div>
+        </div>
+
+        {% if data.recent_issues %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+                <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 text-xs">
+                    <tr>
+                        <th class="px-5 py-3.5">Ring Jaringan</th>
+                        <th class="px-5 py-3.5">Waktu Lapor</th>
+                        <th class="px-5 py-3.5">Deskripsi Kendala</th>
+                        <th class="px-5 py-3.5">Kategori</th>
+                        <th class="px-5 py-3.5">Prioritas</th>
+                        <th class="px-5 py-3.5">Status</th>
+                        <th class="px-5 py-3.5">Teknisi / PIC</th>
+                        <th class="px-5 py-3.5 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for issue in data.recent_issues %}
+                    <tr class="hover:bg-blue-50/40 transition-colors">
+                        <td class="px-5 py-3.5 whitespace-nowrap">
+                            <span class="font-bold text-slate-900">{{ issue.ring_code }}</span>
+                            <div class="text-xs text-slate-500 truncate max-w-[140px]">{{ issue.ring_name }}</div>
+                        </td>
+                        <td class="px-5 py-3.5 whitespace-nowrap text-slate-600 text-xs">
+                            {{ issue.created_at[:16] if issue.created_at else '-' }}
+                        </td>
+                        <td class="px-5 py-3.5">
+                            <div class="font-semibold text-slate-900">{{ issue.title }}</div>
+                            <div class="text-xs text-slate-500 line-clamp-1 max-w-md">{{ issue.description or '-' }}</div>
+                        </td>
+                        <td class="px-5 py-3.5 whitespace-nowrap">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
+                                {{ issue.category }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3.5 whitespace-nowrap">
+                            {% if issue.severity == 'CRITICAL' %}
+                            <span class="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-semibold text-xs border border-rose-200">CRITICAL</span>
+                            {% elif issue.severity == 'HIGH' %}
+                            <span class="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold text-xs border border-amber-200">HIGH</span>
+                            {% else %}
+                            <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs">{{ issue.severity }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3.5 whitespace-nowrap">
+                            {% if issue.status == 'OPEN' %}
+                            <span class="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-semibold text-xs border border-rose-200">OPEN</span>
+                            {% elif issue.status in ['DALAM PENANGANAN', 'INVESTIGASI'] %}
+                            <span class="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold text-xs border border-amber-200">DALAM PENANGANAN</span>
+                            {% else %}
+                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-xs border border-emerald-200">SELESAI</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3.5 whitespace-nowrap text-slate-600">
+                            <div class="flex items-center space-x-1.5">
+                                <i class="fa-regular fa-user text-slate-400 text-xs"></i>
+                                <span>{{ issue.pic or 'Tim Reaksi Cepat' }}</span>
+                            </div>
+                        </td>
+                        <td class="px-5 py-3.5 whitespace-nowrap text-right">
+                            <a href="{{ url_for('monitoring_ring', ring_id=issue.ring_id) }}" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold shadow-2xs transition-all">
+                                <span>Buka Ring</span>
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-10 text-slate-400">
+            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto mb-2.5 text-lg">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <p class="text-sm font-bold text-slate-700">Tidak ada kendala aktif saat ini.</p>
+            <p class="text-xs text-slate-400 mt-0.5">Seluruh jalur kabel optik beroperasi lancar dan aman.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Modal Edit Ring dari Dashboard -->
+<div id="dashEditRingModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-xl relative">
+        <button onclick="closeDashEditRingModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="mb-4">
+            <h3 class="font-bold text-base text-slate-900 flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-pln-blue"></i>
+                <span>Edit Identitas Ring</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Perbarui nama ring, kode unik, atau deskripsi rute</p>
+        </div>
+
+        <form id="dashEditRingForm" onsubmit="saveDashRingUpdate(event)" class="space-y-4">
+            <input type="hidden" id="dashEditRingId">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Nama Ring Jaringan <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" id="dashEditRingName" name="name" required
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-semibold">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Kode Ring (Unik) <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" id="dashEditRingCode" name="code" required
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-mono font-bold uppercase">
+                <p class="text-[11px] text-slate-400 mt-1">Kode digunakan sebagai pengenal unik sistem dan tidak boleh kembar.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Deskripsi / Catatan Jalur</label>
+                <textarea id="dashEditRingDesc" name="description" rows="3"
+                          class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue"></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeDashEditRingModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all cursor-pointer">
+                    Batal
+                </button>
+                <button type="submit" id="btnDashSaveRing" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer">
+                    <i class="fa-solid fa-floppy-disk text-xs"></i>
+                    <span>Simpan Perubahan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let activeFilter = 'all';
+    let currentEditRingId = null;
+
+    function openDashEditRingModal(id, name, code, desc) {
+        currentEditRingId = id;
+        document.getElementById('dashEditRingId').value = id;
+        document.getElementById('dashEditRingName').value = name || '';
+        document.getElementById('dashEditRingCode').value = code || '';
+        document.getElementById('dashEditRingDesc').value = desc || '';
+
+        const modal = document.getElementById('dashEditRingModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                const el = document.getElementById('dashEditRingName');
+                if (el) { el.focus(); el.select(); }
+            }, 60);
+        }
+    }
+
+    function closeDashEditRingModal() {
+        const modal = document.getElementById('dashEditRingModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+        }
+    }
+
+    async function saveDashRingUpdate(e) {
+        e.preventDefault();
+        const id = currentEditRingId;
+        const name = document.getElementById('dashEditRingName').value.trim();
+        const code = document.getElementById('dashEditRingCode').value.trim().toUpperCase();
+        const description = document.getElementById('dashEditRingDesc').value.trim();
+
+        if (!name || !code) {
+            Notify.toast({
+                type: 'warning',
+                title: 'Data Belum Lengkap',
+                message: 'Nama dan Kode Ring wajib diisi!'
+            });
+            return;
+        }
+
+        const btnSave = document.getElementById('btnDashSaveRing');
+        const origText = btnSave ? btnSave.innerHTML : '';
+        if (btnSave) {
+            btnSave.disabled = true;
+            btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Menyimpan...</span>`;
+        }
+
+        try {
+            const res = await fetch(`/api/rings/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, code, description })
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeDashEditRingModal();
+
+                // Update card DOM
+                const nameEl = document.getElementById(`dashRingName-${id}`);
+                if (nameEl) nameEl.innerText = name;
+
+                const codeEl = document.getElementById(`dashRingCode-${id}`);
+                if (codeEl) codeEl.innerText = code;
+
+                // Update data-ring-name & data-ring-code on card for search filter
+                const card = nameEl ? nameEl.closest('.ring-card') : null;
+                if (card) {
+                    card.setAttribute('data-ring-name', name.toLowerCase());
+                    card.setAttribute('data-ring-code', code.toLowerCase());
+                }
+
+                Notify.toast({
+                    type: 'success',
+                    title: 'Ring Berhasil Diperbarui',
+                    message: `Informasi ${name} (${code}) telah disimpan.`
+                });
+            } else {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Gagal Menyimpan Ring',
+                    message: result.error || 'Terjadi kesalahan saat memperbarui ring.'
+                });
+            }
+        } catch (err) {
+            Notify.toast({
+                type: 'error',
+                title: 'Kesalahan Jaringan',
+                message: err.message
+            });
+        } finally {
+            if (btnSave) {
+                btnSave.disabled = false;
+                btnSave.innerHTML = origText;
+            }
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeDashEditRingModal();
+            if (typeof closeNewRingModal === 'function') closeNewRingModal();
+        }
+    });
+
+    function setRingFilter(filter) {
+        activeFilter = filter;
+        
+        // Reset tab styles
+        const tabs = {
+            'all': document.getElementById('filterTabAll'),
+            'safe': document.getElementById('filterTabSafe'),
+            'broken': document.getElementById('filterTabBroken')
+        };
+        for (const [key, btn] of Object.entries(tabs)) {
+            if (key === filter) {
+                btn.className = "px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs transition-all";
+            } else {
+                btn.className = "px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition-all";
+            }
+        }
+        filterRings();
+    }
+
+    function filterRings() {
+        const query = (document.getElementById('ringSearchInput').value || '').toLowerCase().trim();
+        const cards = document.querySelectorAll('.ring-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-ring-name') || '';
+            const code = card.getAttribute('data-ring-code') || '';
+            const hasBroken = card.getAttribute('data-has-broken') === 'true';
+
+            // Filter match
+            let matchesFilter = true;
+            if (activeFilter === 'safe' && hasBroken) matchesFilter = false;
+            if (activeFilter === 'broken' && !hasBroken) matchesFilter = false;
+
+            // Search match
+            let matchesSearch = true;
+            if (query && !name.includes(query) && !code.includes(query)) {
+                matchesSearch = false;
+            }
+
+            if (matchesFilter && matchesSearch) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        const noFoundEl = document.getElementById('noRingsFound');
+        if (visibleCount === 0) {
+            noFoundEl.classList.remove('hidden');
+        } else {
+            noFoundEl.classList.add('hidden');
+        }
+    }
+</script>
+{% endblock %}

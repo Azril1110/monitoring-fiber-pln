@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block title %}Belum Ada Ring - PLN Icon+{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto text-center py-16 space-y-4">
+    <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto text-2xl border border-cyan-500/20">
+        <i class="fa-solid fa-circle-nodes"></i>
+    </div>
+    <h2 class="text-xl font-bold text-white">Belum Ada Ring Jaringan Terdaftar</h2>
+    <p class="text-xs text-slate-400">
+        Silakan buat Ring jaringan fiber pertama Anda untuk mulai memantau titik POP 1, DCU, POP 2, dan status kabel.
+    </p>
+    <div class="pt-2">
+        <button onclick="openNewRingModal()" class="px-5 py-2.5 bg-gradient-to-r from-pln-blue to-pln-cyan text-white text-xs font-bold rounded-xl shadow-lg shadow-cyan-500/20">
+            + Tambah Ring Pertama
+        </button>
+    </div>
+</div>
+{% endblock %}

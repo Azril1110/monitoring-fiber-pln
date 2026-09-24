@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PLN Icon+ Network Operations Center</title>
+    <link rel="icon" type="image/jpg" href="{{ url_for('static', filename='img/pln_icon_only.jpg') }}">
+    <!-- Tailwind CSS CDN & Bootstrap 5 & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Split Layout Container */
+        .split-layout {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Left Side (Abstract Geometric Brand Showcase) */
+        .split-left {
+            flex: 1;
+            background: linear-gradient(145deg, #f0f9ff 0%, #e0f2fe 100%);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            color: #0f172a;
+            animation: fadeIn 0.8s ease-in-out;
+            overflow: hidden;
+        }
+        
+        .geometric-bg {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .shape {
+            position: absolute;
+            transform: rotate(45deg);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            transition: transform 0.5s ease;
+        }
+        
+        .shape.navy { background: #004A74; }
+        .shape.cyan { background: #00A2E9; }
+        .shape.yellow { background: #FFCC00; }
+        .shape.outline-navy { background: transparent; border: 4px solid #004A74; box-shadow: none; }
+        .shape.outline-cyan { background: transparent; border: 4px solid #00A2E9; box-shadow: none; }
+        .shape.outline-yellow { background: transparent; border: 4px solid #FFCC00; box-shadow: none; }
+        
+        /* Shape Positioning */
+        .s1 { width: 350px; height: 350px; top: -150px; left: -150px; }
+        .s2 { width: 220px; height: 220px; top: -80px; left: 80px; z-index: 2; }
+        .s3 { width: 400px; height: 400px; top: -200px; left: -80px; }
+        
+        .s4 { width: 280px; height: 280px; bottom: -120px; left: -120px; }
+        .s5 { width: 180px; height: 180px; bottom: 80px; left: -50px; z-index: 2; }
+        .s6 { width: 220px; height: 220px; bottom: -80px; left: 100px; }
+        
+        .s7 { width: 500px; height: 500px; top: -250px; right: -250px; opacity: 0.05; background: #004A74; }
+        .s8 { width: 120px; height: 120px; bottom: 200px; right: -60px; border-width: 3px; }
+        .s9 { width: 300px; height: 300px; bottom: -150px; right: 50px; opacity: 0.05; background: #00A2E9; }
+
+        .split-left-content {
+            position: relative;
+            z-index: 10;
+            max-width: 540px;
+            text-align: center;
+            padding: 2.5rem;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .split-left h2 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            line-height: 1.3;
+            margin-bottom: 1.25rem;
+            color: #004A74;
+            letter-spacing: -0.02em;
+        }
+        .split-left p {
+            font-size: 1.05rem;
+            color: #475569;
+            line-height: 1.7;
+            margin: 0;
+            font-weight: 400;
+        }
+
+        /* Right Side (Login Form Wrapper) */
+        .split-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem;
+            background-color: #ffffff;
+            background-image: 
+                radial-gradient(at 10% 20%, rgba(219, 234, 254, 0.35) 0px, transparent 50%),
+                radial-gradient(at 90% 80%, rgba(224, 231, 255, 0.35) 0px, transparent 50%);
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2.25rem;
+        }
+        .login-header h1 {
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 0.35rem;
+            letter-spacing: -0.02em;
+        }
+        .login-header p {
+            font-size: 0.95rem;
+            color: #64748b;
+        }
+
+        .form-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        .input-group-wrap {
+            display: flex;
+            align-items: center;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #ffffff;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+        .input-group-wrap:focus-within {
+            border-color: #005fa3;
+            box-shadow: 0 0 0 4px rgba(0, 95, 163, 0.12);
+        }
+        .input-group-wrap .input-icon {
+            padding: 0 16px;
+            color: #94a3b8;
+            font-size: 1.05rem;
+            transition: color 0.2s ease;
+        }
+        .input-group-wrap:focus-within .input-icon {
+            color: #005fa3;
+        }
+        .input-group-wrap input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 0.9rem 0;
+            font-size: 0.95rem;
+            color: #0f172a;
+            background: transparent;
+        }
+        .input-group-wrap input::placeholder { color: #94a3b8; }
+        .toggle-pw {
+            background: none;
+            border: none;
+            padding: 0 16px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        .toggle-pw:hover { color: #005fa3; }
+
+        .btn-login {
+            background: linear-gradient(135deg, #005fa3, #004071);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.95rem;
+            font-size: 1rem;
+            font-weight: 700;
+            width: 100%;
+            margin-top: 1.25rem;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 95, 163, 0.25);
+        }
+        .btn-login:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 95, 163, 0.35);
+            background: linear-gradient(135deg, #004a80, #002d52);
+            color: white;
+        }
+
+        .alert-msg {
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 0.875rem;
+            margin-bottom: 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: fadeIn 0.4s ease;
+        }
+        .alert-err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 2.25rem;
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+        .login-footer a {
+            color: #005fa3;
+            text-decoration: none;
+            transition: color 0.2s;
+            font-weight: 600;
+        }
+        .login-footer a:hover {
+            color: #004071;
+            text-decoration: underline;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 992px) {
+            .split-left { display: none; }
+            .split-right {
+                background-image: 
+                    radial-gradient(at 10% 20%, rgba(219, 234, 254, 0.5) 0px, transparent 50%),
+                    radial-gradient(at 90% 80%, rgba(224, 231, 255, 0.5) 0px, transparent 50%),
+                    radial-gradient(at 50% 50%, rgba(241, 245, 249, 0.8) 0px, transparent 50%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="split-layout">
+        
+        <!-- Left Side: Abstract Geometric / Brand Showcase -->
+        <div class="split-left">
+            <div class="geometric-bg">
+                <div class="shape navy s1"></div>
+                <div class="shape yellow s2"></div>
+                <div class="shape outline-cyan s3"></div>
+                
+                <div class="shape cyan s4"></div>
+                <div class="shape yellow s5"></div>
+                <div class="shape outline-navy s6"></div>
+                
+                <div class="shape s7"></div>
+                <div class="shape outline-cyan s8"></div>
+                <div class="shape s9"></div>
+            </div>
+
+            <div class="split-left-content">
+                <div class="d-flex align-items-center justify-content-center mb-4">
+                    <div style="width: 58px; height: 58px; overflow: hidden; margin-right: 14px; border-radius: 12px; background: #ffffff; padding: 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
+                        <img src="{{ url_for('static', filename='img/pln_icon_only.jpg') }}" alt="PLN Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
+                    </div>
+                    <div class="d-flex flex-column text-start" style="line-height: 1.1;">
+                        <span style="font-weight: 900; color: #0085C7; font-size: 1.95rem; letter-spacing: 0.5px;">PLN</span>
+                        <span style="font-weight: 500; color: #004A74; font-size: 1.45rem; letter-spacing: 0.5px; margin-top: 2px;">Icon Plus</span>
+                    </div>
+                </div>
+                <h2>Pusat Pengawasan Fiber Optik & SCADA</h2>
+                <p>Pantau status rute transmisi, kontinuitas kabel optik ADSS 24 Core, titik gardu DCU, dan deteksi kendala kabel putus secara real-time dan terpusat.</p>
+            </div>
+            
+            <div style="position: absolute; bottom: 2rem; z-index: 10; font-size: 0.85rem; color: #64748b; font-weight: 500;">
+                &copy; 2026 PT PLN Icon Plus &bull; Network Operations Center
+            </div>
+        </div>
+
+        <!-- Right Side: Clean Modern Login Form -->
+        <div class="split-right">
+            <div class="login-wrapper">
+                <div class="login-header">
+                    <a href="{{ url_for('landing') }}" class="d-inline-flex align-items-center justify-content-center text-decoration-none mb-4">
+                        <div style="width: 54px; height: 54px; overflow: hidden; margin-right: 12px; border-radius: 12px; background: #ffffff; padding: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+                            <img src="{{ url_for('static', filename='img/pln_icon_only.jpg') }}" alt="PLN Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
+                        </div>
+                        <div class="d-flex flex-column text-start" style="line-height: 1.1;">
+                            <span style="font-weight: 900; color: #0085C7; font-size: 1.8rem; letter-spacing: 0.5px;">PLN</span>
+                            <span style="font-weight: 500; color: #004A74; font-size: 1.35rem; letter-spacing: 0.5px; margin-top: 2px;">Icon Plus</span>
+                        </div>
+                    </a>
+                    <h1>Selamat Datang</h1>
+                    <p>Silakan masuk ke akun Portal NOC Anda</p>
+                </div>
+
+                {% if error %}
+                <div class="alert-msg alert-err">
+                    <i class="fa-solid fa-circle-exclamation flex-shrink-0"></i>
+                    <div>{{ error }}</div>
+                </div>
+                {% endif %}
+
+                <form action="{{ url_for('login', next=request.args.get('next', '')) }}" method="POST" autocomplete="off">
+                    <div class="mb-4">
+                        <label class="form-label">Username</label>
+                        <div class="input-group-wrap">
+                            <span class="input-icon"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" name="username" placeholder="Masukkan username Anda..." required autofocus>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <div class="input-group-wrap">
+                            <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" id="pw" name="password" placeholder="Masukkan password Anda..." required>
+                            <button type="button" class="toggle-pw" onclick="togglePw()" title="Lihat password">
+                                <i id="pwIcon" class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-login">
+                        <i class="fa-solid fa-right-to-bracket me-2"></i> Masuk Sekarang
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    Kembali ke <a href="{{ url_for('landing') }}">Landing Page Portal</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function togglePw() {
+            const pw = document.getElementById('pw');
+            const icon = document.getElementById('pwIcon');
+            if (pw.type === 'password') {
+                pw.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                pw.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+    </script>
+</body>
+</html>

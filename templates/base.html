@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Monitoring PLN Icon+{% endblock %}</title>
+    <link rel="icon" type="image/webp" href="{{ url_for('static', filename='img/logo-desktop.webp') }}">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pln: {
+                            blue: '#005fa3',
+                            darkBlue: '#004071',
+                            lightBlue: '#e8f2fa',
+                            yellow: '#f59e0b',
+                            accent: '#0284c7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Standard Clean Corporate Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .topology-blueprint {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- Top Utility / NOC Bar -->
+    <div class="bg-slate-900 text-slate-300 text-xs py-2 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center space-x-1.5 font-semibold text-emerald-400">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>NOC LIVE MONITORING</span>
+                </span>
+                <span class="text-slate-600 hidden sm:inline">&bull;</span>
+                <span class="text-slate-400 hidden sm:inline">Sistem Pengawasan Jaringan Fiber Optik & SCADA</span>
+            </div>
+            
+            <div class="flex items-center space-x-4 text-slate-300 text-xs font-medium">
+                <span id="liveClock" class="flex items-center space-x-1.5 font-semibold text-slate-200">
+                    <i class="fa-regular fa-clock text-xs mr-1 text-slate-400"></i>
+                    <span>--:--:-- WIB</span>
+                </span>
+                {% if current_user and current_user.is_authenticated %}
+                <span class="text-slate-700">&bull;</span>
+                <!-- User Status Badge -->
+                <div class="flex items-center space-x-2">
+                    <span class="text-slate-300 hidden sm:inline font-semibold">{{ current_user.full_name }}</span>
+                    {% if current_user.role == 'admin' %}
+                    <span class="px-2 py-0.5 rounded-md bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-bold tracking-wider">ADMIN</span>
+                    {% else %}
+                    <span class="px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-bold tracking-wider">VIEWER</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <span class="text-slate-700">&bull;</span>
+                <div class="flex items-center space-x-2">
+                    <span class="text-slate-400 hidden sm:inline">Mode Tamu (Viewer)</span>
+                    <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-bold tracking-wider">VIEWER</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-2xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-2">
+                
+                <!-- Logo & Brand -->
+                <div class="flex items-center space-x-3 shrink-0">
+                    <a href="{{ url_for('landing') }}" class="flex items-center space-x-3 group py-1">
+                        <img src="{{ url_for('static', filename='img/logo-desktop.webp') }}" 
+                             alt="Logo PLN Icon Plus" 
+                             class="h-8 sm:h-8.5 w-auto object-contain transition-transform group-hover:scale-102">
+                        <div class="border-l border-slate-200 pl-3 hidden md:block">
+                            <div class="flex items-center space-x-1.5 whitespace-nowrap">
+                                <span class="text-xs font-bold text-slate-800 tracking-tight uppercase">Monitoring Transmisi FO</span>
+                                <span class="text-[9px] font-semibold bg-blue-50 text-pln-blue border border-blue-200/80 px-1 py-0.2 rounded">NOC</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-normal leading-tight whitespace-nowrap">Network Operations Center</p>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Navigation Links -->
+                <nav class="flex items-center space-x-1 sm:space-x-1.5 shrink-0 whitespace-nowrap">
+                    <a href="{{ url_for('landing') }}" class="h-9 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center space-x-1.5 shrink-0 whitespace-nowrap {% if request.endpoint == 'landing' %}bg-slate-100 text-slate-900 border border-slate-200/80 shadow-2xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent{% endif %}">
+                        <i class="fa-solid fa-house text-slate-400 text-xs"></i>
+                        <span>Landing Portal</span>
+                    </a>
+
+                    <a href="{{ url_for('dashboard') }}" class="h-9 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center space-x-1.5 shrink-0 whitespace-nowrap {% if request.endpoint == 'dashboard' %}bg-slate-100 text-slate-900 border border-slate-200/80 shadow-2xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent{% endif %}">
+                        <i class="fa-solid fa-chart-pie text-slate-400 text-xs"></i>
+                        <span>Dashboard</span>
+                    </a>
+
+                    <!-- Ring Dropdown / Monitoring Link -->
+                    <div class="relative group shrink-0" id="ringNavDropdown">
+                        <div class="h-9 inline-flex items-center rounded-lg transition-all border shrink-0 whitespace-nowrap {% if request.endpoint in ['monitoring_ring', 'monitoring_default'] %}bg-slate-100 text-slate-900 font-semibold border-slate-200 shadow-2xs{% else %}border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50{% endif %}">
+                            <a href="{{ url_for('monitoring_default') }}" class="pl-3 pr-1.5 py-1.5 text-xs font-semibold inline-flex items-center space-x-1.5">
+                                <i class="fa-solid fa-network-wired text-slate-400 text-xs"></i>
+                                <span>Monitoring Ring</span>
+                            </a>
+                            <button type="button" onclick="toggleRingDropdown(event)" class="pr-2.5 pl-1 py-1.5 text-[11px] text-slate-400 hover:text-slate-700 transition-colors focus:outline-none" title="Buka Daftar Ring">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Dropdown menu -->
+                        <div id="ringDropdownMenu" class="absolute right-0 sm:left-0 top-full pt-1.5 w-72 hidden group-hover:block z-50">
+                            <div class="bg-white border border-slate-200 rounded-xl shadow-xl py-1.5">
+                                <div class="px-3 py-2 text-xs font-semibold text-slate-500 uppercase flex items-center justify-between border-b border-slate-100 mb-1">
+                                    <span>Pilih Ring Jaringan</span>
+                                    <span class="text-xs text-slate-400 font-normal">({{ all_nav_rings|length }} Terdata)</span>
+                                </div>
+                                <div class="max-h-72 overflow-y-auto divide-y divide-slate-50">
+                                    {% for r in all_nav_rings %}
+                                    <a href="{{ url_for('monitoring_ring', ring_id=r.id) }}" class="flex items-center justify-between px-3 py-2.5 text-xs text-slate-700 hover:bg-blue-50 hover:text-pln-blue transition-colors group/item">
+                                        <div class="truncate mr-2">
+                                            <div class="font-semibold text-slate-900 flex items-center space-x-2">
+                                                <span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-medium">{{ r.code }}</span>
+                                                <span class="truncate">{{ r.name }}</span>
+                                            </div>
+                                        </div>
+                                        <i class="fa-solid fa-chevron-right text-xs text-slate-300 group-hover/item:text-pln-blue group-hover/item:translate-x-0.5 transition-all"></i>
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% if current_user and current_user.role == 'admin' %}
+                                <div class="border-t border-slate-100 mt-1 pt-1.5 px-2">
+                                    <button onclick="openNewRingModal()" class="w-full text-center py-2 px-3 text-xs text-pln-blue hover:bg-blue-50 rounded-lg flex items-center justify-center space-x-1.5 font-semibold transition-colors border border-dashed border-blue-200">
+                                        <i class="fa-solid fa-plus text-xs"></i>
+                                        <span>Tambah Ring Baru</span>
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if current_user and current_user.role == 'admin' %}
+                    <!-- Admin User Management Link -->
+                    <a href="{{ url_for('users_page') }}" class="h-9 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all inline-flex items-center space-x-1.5 shrink-0 whitespace-nowrap {% if request.endpoint == 'users_page' %}bg-slate-100 text-slate-900 border border-slate-200/80 shadow-2xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent{% endif %}" title="Kelola Akun Pengguna">
+                        <i class="fa-solid fa-users-gear text-slate-400 text-xs"></i>
+                        <span>Akun Pengguna</span>
+                    </a>
+                    {% endif %}
+
+                    {% if current_user and current_user.is_authenticated %}
+                    
+                    {% if current_user.role == 'admin' %}
+                    <!-- Add Ring Button (Admin Only) -->
+                    <button onclick="openNewRingModal()" class="h-9 px-3 py-1.5 rounded-lg bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold shadow-2xs inline-flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Tambah Ring</span>
+                    </button>
+                    {% endif %}
+
+                    <!-- User Account Dropdown -->
+                    <div class="relative group shrink-0" id="userNavDropdown">
+                        <button type="button" onclick="toggleUserDropdown(event)" class="h-9 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold border border-slate-200 inline-flex items-center space-x-2 transition-all cursor-pointer shrink-0 whitespace-nowrap">
+                            <i class="fa-regular fa-circle-user text-sm text-pln-blue"></i>
+                            <span class="max-w-[100px] truncate hidden sm:inline">{{ current_user.username }}</span>
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                        </button>
+                        <div id="userDropdownMenu" class="absolute right-0 top-full pt-1.5 w-56 hidden group-hover:block z-50">
+                            <div class="bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 text-xs">
+                                <div class="px-3.5 py-2.5 border-b border-slate-100">
+                                    <div class="font-bold text-slate-900 truncate">{{ current_user.full_name }}</div>
+                                    <div class="text-[11px] text-slate-400 font-mono mt-0.5">@{{ current_user.username }} &bull; <span class="uppercase font-bold text-pln-blue">{{ current_user.role }}</span></div>
+                                </div>
+                                <button type="button" onclick="openChangePasswordModal()" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-700 font-medium flex items-center space-x-2 cursor-pointer transition-colors">
+                                    <i class="fa-solid fa-key text-slate-400 text-xs"></i>
+                                    <span>Ganti Password</span>
+                                </button>
+                                {% if current_user.role == 'admin' %}
+                                <a href="{{ url_for('users_page') }}" class="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-700 font-medium flex items-center space-x-2 transition-colors">
+                                    <i class="fa-solid fa-users-gear text-slate-400 text-xs"></i>
+                                    <span>Manajemen Akun</span>
+                                </a>
+                                {% endif %}
+                                <div class="border-t border-slate-100 my-1"></div>
+                                <a href="{{ url_for('logout') }}" class="w-full text-left px-3.5 py-2 hover:bg-rose-50 text-rose-600 font-semibold flex items-center space-x-2 transition-colors">
+                                    <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                                    <span>Keluar (Logout)</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Direct Logout Button on Far Right -->
+                    <a href="{{ url_for('logout') }}" class="h-9 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/90 text-xs font-semibold inline-flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap" title="Keluar dari Sistem">
+                        <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                        <span>Logout</span>
+                    </a>
+                    {% else %}
+                    <!-- Login Button for Guest/Visitor -->
+                    <a href="{{ url_for('login') }}" class="h-9 px-3.5 py-1.5 rounded-lg bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold shadow-2xs inline-flex items-center space-x-1.5 transition-all shrink-0 whitespace-nowrap">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                        <span>Masuk (Login Admin)</span>
+                    </a>
+                    {% endif %}
+                </nav>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Clean Enterprise Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+                <span class="font-bold text-slate-800">PLN Icon+ Network Monitoring</span>
+                <span class="text-slate-300">&bull;</span>
+                <span>Transmisi Kabel Fiber Optik & Pemantauan Per Ring</span>
+            </div>
+            <div class="flex items-center space-x-4 text-[11px] text-slate-400">
+                <span class="flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                    <span class="text-slate-600 font-medium">Sistem Berjalan Normal</span>
+                </span>
+                <span class="text-slate-300">&bull;</span>
+                <span>Versi 2.4 Enterprise</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Simple Modal: Tambah Ring Baru -->
+    <div id="newRingModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+        <div class="bg-white border border-slate-200 rounded-xl max-w-lg w-full p-6 shadow-xl relative">
+            <button onclick="closeNewRingModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="mb-5">
+                <h3 class="font-bold text-base text-slate-900">Tambah Ring Jaringan Baru</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Buat jalur transmisi ring baru dengan titik POP 1 (Mulai) dan POP 2 (Akhir)</p>
+            </div>
+
+            <form id="newRingForm" onsubmit="submitNewRing(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Ring <span class="text-rose-500">*</span></label>
+                    <input type="text" name="name" required placeholder="Contoh: Ring 4 - TB Simatupang ke Pasar Minggu"
+                           class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Kode Ring <span class="text-rose-500">*</span></label>
+                        <input type="text" name="code" required placeholder="Contoh: RING-04"
+                               class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Jarak Awal (Meter) <span class="text-slate-400 font-normal text-[11px]">(Bebas)</span></label>
+                        <input type="number" name="initial_distance_m" value="5000" step="any" placeholder="Bebas isi jarak (meter)"
+                               class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">POP 1 (MULAI)</label>
+                        <input type="text" name="pop1_name" value="POP 1 (MULAI)"
+                               class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">POP 2 (AKHIR)</label>
+                        <input type="text" name="pop2_name" value="POP 2 (AKHIR)"
+                               class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Deskripsi Rute / Keterangan</label>
+                    <textarea name="description" rows="2" placeholder="Informasi lintasan kabel atau area layanan..."
+                              class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeNewRingModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-lg shadow-xs">
+                        Simpan Ring
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Global Modal: Ganti Password -->
+    <div id="changePasswordModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+        <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+            <button onclick="closeChangePasswordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="mb-4">
+                <h3 class="font-bold text-base text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-key text-pln-blue"></i>
+                    <span>Ganti Password Akun</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">Ubah password Anda untuk keamanan akun</p>
+            </div>
+
+            <form onsubmit="submitChangePassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Password Lama <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="password" id="oldPasswordInput" required placeholder="Masukkan password saat ini..."
+                           class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-medium">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Password Baru <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="password" id="newPasswordInput" required placeholder="Masukkan password baru..."
+                           class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-medium">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                        Konfirmasi Password Baru <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="password" id="confirmPasswordInput" required placeholder="Ketik ulang password baru..."
+                           class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-medium">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeChangePasswordModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit" id="btnSubmitPwd" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i>
+                        <span>Simpan Password Baru</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modern Enterprise Toast Notification Container -->
+    <div id="plnToastContainer" class="fixed top-5 right-5 z-[9999] flex flex-col space-y-2.5 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+    <!-- Modern Enterprise Confirmation Modal -->
+    <div id="plnConfirmModal" class="fixed inset-0 bg-slate-900/35 backdrop-blur-xs z-[9998] hidden items-center justify-center p-4" style="display: none;">
+        <div id="plnConfirmCard" class="bg-white border border-slate-200/90 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative transform scale-95 opacity-0 transition-all duration-200">
+            <div class="flex items-start space-x-3.5">
+                <div id="plnConfirmIconWrap" class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base bg-amber-50 text-amber-600 border border-amber-200/70">
+                    <i id="plnConfirmIcon" class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="flex-grow pt-0.5">
+                    <h4 id="plnConfirmTitle" class="font-bold text-sm text-slate-900 leading-snug">Konfirmasi Tindakan</h4>
+                    <p id="plnConfirmText" class="text-xs text-slate-500 mt-1 leading-relaxed">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-end space-x-2 mt-5 pt-3.5 border-t border-slate-100">
+                <button type="button" id="plnConfirmCancelBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer">
+                    Batal
+                </button>
+                <button type="button" id="plnConfirmOkBtn" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-pln-blue hover:bg-pln-darkBlue shadow-xs transition-all cursor-pointer">
+                    Lanjutkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Common JS script & Global Modern Notification Engine -->
+    <script>
+        // =====================================================================
+        // MODERN NOTIFICATION & CONFIRM ENGINE (No Ugly Cartoons)
+        // =====================================================================
+        const Notify = {
+            toast: function({ type = 'info', title = '', message = '', duration = 3000 }) {
+                const container = document.getElementById('plnToastContainer');
+                if (!container) return;
+
+                const toast = document.createElement('div');
+                toast.className = 'pointer-events-auto bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-lg shadow-slate-900/5 rounded-2xl p-3.5 flex items-start space-x-3 transition-all duration-300 transform translate-y-[-8px] opacity-0';
+
+                let iconClass = 'fa-info text-pln-blue';
+                let bgClass = 'bg-blue-50 border-blue-100';
+                let defaultTitle = 'Informasi';
+
+                if (type === 'success') {
+                    iconClass = 'fa-check text-emerald-600';
+                    bgClass = 'bg-emerald-50 border-emerald-100';
+                    defaultTitle = 'Berhasil';
+                } else if (type === 'error') {
+                    iconClass = 'fa-circle-xmark text-rose-600';
+                    bgClass = 'bg-rose-50 border-rose-100';
+                    defaultTitle = 'Gagal';
+                } else if (type === 'warning') {
+                    iconClass = 'fa-triangle-exclamation text-amber-600';
+                    bgClass = 'bg-amber-50 border-amber-100';
+                    defaultTitle = 'Perhatian';
+                }
+
+                const finalTitle = title || defaultTitle;
+
+                toast.innerHTML = `
+                    <div class="w-7 h-7 rounded-xl ${bgClass} border flex items-center justify-center flex-shrink-0 text-xs">
+                        <i class="fa-solid ${iconClass}"></i>
+                    </div>
+                    <div class="flex-grow min-w-0 pr-2 pt-0.5">
+                        <h5 class="text-xs font-semibold text-slate-900 leading-tight">${finalTitle}</h5>
+                        ${message ? `<p class="text-xs text-slate-500 mt-0.5 leading-normal break-words">${message}</p>` : ''}
+                    </div>
+                    <button type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors cursor-pointer" onclick="this.closest('.pointer-events-auto').remove()">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                `;
+
+                container.appendChild(toast);
+
+                requestAnimationFrame(() => {
+                    toast.classList.remove('translate-y-[-8px]', 'opacity-0');
+                });
+
+                setTimeout(() => {
+                    toast.classList.add('translate-y-[-8px]', 'opacity-0');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            },
+
+            confirm: function({ title = 'Konfirmasi', text = '', confirmText = 'Lanjutkan', cancelText = 'Batal', isDanger = false }) {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('plnConfirmModal');
+                    const card = document.getElementById('plnConfirmCard');
+                    const titleEl = document.getElementById('plnConfirmTitle');
+                    const textEl = document.getElementById('plnConfirmText');
+                    const iconEl = document.getElementById('plnConfirmIcon');
+                    const iconWrap = document.getElementById('plnConfirmIconWrap');
+                    const cancelBtn = document.getElementById('plnConfirmCancelBtn');
+                    const okBtn = document.getElementById('plnConfirmOkBtn');
+
+                    if (!modal || !card) return resolve({ isConfirmed: false });
+
+                    titleEl.innerText = title;
+                    textEl.innerText = text;
+                    cancelBtn.innerText = cancelText;
+                    okBtn.innerText = confirmText;
+
+                    if (isDanger) {
+                        iconEl.className = 'fa-solid fa-triangle-exclamation';
+                        iconWrap.className = 'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base bg-rose-50 text-rose-600 border border-rose-100';
+                        okBtn.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-all cursor-pointer';
+                    } else {
+                        iconEl.className = 'fa-solid fa-circle-question';
+                        iconWrap.className = 'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-base bg-blue-50 text-pln-blue border border-blue-100';
+                        okBtn.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-white bg-pln-blue hover:bg-pln-darkBlue shadow-xs transition-all cursor-pointer';
+                    }
+
+                    const cleanup = (confirmed) => {
+                        card.classList.remove('scale-100', 'opacity-100');
+                        card.classList.add('scale-95', 'opacity-0');
+                        setTimeout(() => {
+                            modal.classList.add('hidden');
+                            modal.classList.remove('flex');
+                            modal.style.display = 'none';
+                        }, 150);
+                        document.removeEventListener('keydown', keyHandler);
+                        resolve({ isConfirmed: confirmed });
+                    };
+
+                    const keyHandler = (e) => {
+                        if (e.key === 'Escape') cleanup(false);
+                        else if (e.key === 'Enter') cleanup(true);
+                    };
+
+                    cancelBtn.onclick = () => cleanup(false);
+                    okBtn.onclick = () => cleanup(true);
+                    modal.onclick = (e) => {
+                        if (e.target === modal) cleanup(false);
+                    };
+
+                    document.addEventListener('keydown', keyHandler);
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    modal.style.display = 'flex';
+                    requestAnimationFrame(() => {
+                        card.classList.remove('scale-95', 'opacity-0');
+                        card.classList.add('scale-100', 'opacity-100');
+                    });
+                });
+            }
+        };
+
+        // Window-level modern Swal bridge to completely replace SweetAlert2
+        window.Swal = {
+            fire: function(options) {
+                if (typeof options === 'string') {
+                    options = { title: options };
+                }
+                if (options.showCancelButton) {
+                    const isDanger = options.confirmButtonColor === '#dc2626' || options.icon === 'warning';
+                    return Notify.confirm({
+                        title: options.title || 'Konfirmasi Tindakan',
+                        text: options.text || '',
+                        confirmText: options.confirmButtonText || 'Ya, Lanjutkan',
+                        cancelText: options.cancelButtonText || 'Batal',
+                        isDanger: isDanger
+                    });
+                }
+                Notify.toast({
+                    type: options.icon || 'info',
+                    title: options.title || '',
+                    message: options.text || '',
+                    duration: options.timer || 3200
+                });
+                return Promise.resolve({ isConfirmed: true });
+            },
+            showLoading: function() {}
+        };
+
+        // =====================================================================
+        // NEW RING MODAL
+        // =====================================================================
+        function openNewRingModal() {
+            const modal = document.getElementById('newRingModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.style.display = 'flex';
+                setTimeout(() => {
+                    const el = document.querySelector('#newRingForm input[name="name"]');
+                    if (el) el.focus();
+                }, 60);
+            }
+        }
+        function closeNewRingModal() {
+            const modal = document.getElementById('newRingModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.style.display = 'none';
+            }
+        }
+
+        // =====================================================================
+        // CHANGE PASSWORD MODAL
+        // =====================================================================
+        function openChangePasswordModal() {
+            const modal = document.getElementById('changePasswordModal');
+            if (modal) {
+                document.getElementById('oldPasswordInput').value = '';
+                document.getElementById('newPasswordInput').value = '';
+                document.getElementById('confirmPasswordInput').value = '';
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.style.display = 'flex';
+            }
+        }
+        function closeChangePasswordModal() {
+            const modal = document.getElementById('changePasswordModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.style.display = 'none';
+            }
+        }
+        async function submitChangePassword(e) {
+            e.preventDefault();
+            const old_password = document.getElementById('oldPasswordInput').value;
+            const new_password = document.getElementById('newPasswordInput').value;
+            const confirm_password = document.getElementById('confirmPasswordInput').value;
+
+            if (new_password !== confirm_password) {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Password Tidak Cocok',
+                    message: 'Password baru dan konfirmasi password tidak sama!'
+                });
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitPwd');
+            const orig = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Menyimpan...'; }
+
+            try {
+                const res = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ old_password, new_password })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    Notify.toast({
+                        type: 'success',
+                        title: 'Password Diperbarui',
+                        message: result.message
+                    });
+                    closeChangePasswordModal();
+                } else {
+                    Notify.toast({
+                        type: 'error',
+                        title: 'Gagal Mengubah Password',
+                        message: result.error
+                    });
+                }
+            } catch (err) {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Kesalahan Jaringan',
+                    message: err.message
+                });
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeNewRingModal();
+                closeChangePasswordModal();
+            }
+        });
+
+        async function submitNewRing(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const res = await fetch('/api/rings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    Notify.toast({
+                        type: 'success',
+                        title: 'Ring Berhasil Dibuat',
+                        message: result.message || 'Membuka halaman monitoring...'
+                    });
+                    setTimeout(() => {
+                        window.location.href = `/monitoring/${result.ring_id}`;
+                    }, 800);
+                } else {
+                    Notify.toast({
+                        type: 'error',
+                        title: 'Gagal Membuat Ring',
+                        message: result.error || 'Terjadi kesalahan sistem'
+                    });
+                }
+            } catch (err) {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Kesalahan Jaringan',
+                    message: err.message
+                });
+            }
+        }
+
+        // Toggle Navbar Ring & User Dropdown
+        function toggleRingDropdown(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('ringDropdownMenu');
+            if (!menu) return;
+            menu.style.display = menu.style.display === 'block' ? '' : 'block';
+        }
+
+        function toggleUserDropdown(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('userDropdownMenu');
+            if (!menu) return;
+            menu.style.display = menu.style.display === 'block' ? '' : 'block';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const ringDropdown = document.getElementById('ringNavDropdown');
+            const ringMenu = document.getElementById('ringDropdownMenu');
+            if (ringDropdown && ringMenu && !ringDropdown.contains(e.target)) {
+                ringMenu.style.display = '';
+            }
+
+            const userDropdown = document.getElementById('userNavDropdown');
+            const userMenu = document.getElementById('userDropdownMenu');
+            if (userDropdown && userMenu && !userDropdown.contains(e.target)) {
+                userMenu.style.display = '';
+            }
+        });
+
+        // Real-time NOC Live Clock
+        function updateLiveClock() {
+            const el = document.getElementById('liveClock');
+            if (!el) return;
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID', { hour12: false });
+            el.innerHTML = `<i class="fa-regular fa-clock text-[10px] mr-1 text-slate-400"></i><span>${timeStr} WIB</span>`;
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,1820 @@
+{% extends 'base.html' %}
+
+{% block title %}Monitoring {{ data.ring.name }} - PLN Icon+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 sm:space-y-8">
+
+    <!-- Top Breadcrumb & Ring Switcher Tab Bar -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        
+        <!-- Tabs of Rings -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 md:pb-0">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1 whitespace-nowrap flex items-center space-x-1.5">
+                <i class="fa-solid fa-layer-group text-xs"></i>
+                <span>Ring:</span>
+            </span>
+            {% for r in all_rings %}
+            <a href="{{ url_for('monitoring_ring', ring_id=r.id) }}"
+               class="px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center space-x-2 {% if r.id == current_ring_id %}bg-pln-blue text-white shadow-xs{% else %}bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80{% endif %}">
+                <span class="text-xs font-medium {% if r.id == current_ring_id %}opacity-85{% else %}text-slate-400{% endif %}">{{ r.code }}</span>
+                <span>{{ r.name.split('-')[1]|default(r.name) if '-' in r.name else r.name }}</span>
+            </a>
+            {% endfor %}
+            {% if current_user and current_user.role == 'admin' %}
+            <button onclick="openNewRingModal()" class="px-3 py-2 rounded-xl text-xs font-semibold text-pln-blue bg-blue-50/70 hover:bg-blue-100/70 whitespace-nowrap transition-all border border-dashed border-blue-300 flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>Ring Baru</span>
+            </button>
+            {% endif %}
+        </div>
+
+        <!-- Quick actions -->
+        <div class="flex items-center space-x-2 flex-shrink-0">
+            {% if current_user and current_user.role == 'admin' %}
+            <button onclick="openAddNodeModal()" class="px-3.5 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white rounded-xl text-xs font-semibold shadow-xs flex items-center space-x-1.5 transition-all cursor-pointer">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span>Sisip DCU / Titik</span>
+            </button>
+            <button onclick="openEditRingModal()" class="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs border border-slate-200 flex items-center space-x-1.5 transition-all cursor-pointer" title="Edit Informasi Ring">
+                <i class="fa-solid fa-pen-to-square text-xs text-slate-500"></i>
+                <span>Edit Ring</span>
+            </button>
+            <button onclick="deleteCurrentRing({{ data.ring.id }}, '{{ data.ring.name }}')" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all border border-slate-200 cursor-pointer" title="Hapus Ring ini">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+            {% else %}
+            <span class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold flex items-center space-x-1.5">
+                <i class="fa-solid fa-eye text-slate-400"></i>
+                <span>Viewer (Hanya Lihat)</span>
+            </span>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Ring Overview Dashboard Card -->
+    <div class="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-xs">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div>
+                <div class="flex items-center space-x-2.5">
+                    <span id="ringHeaderCode" class="px-2.5 py-0.5 rounded-lg bg-blue-50 text-pln-blue text-xs font-semibold border border-blue-200/80">
+                        {{ data.ring.code }}
+                    </span>
+                    <span class="text-slate-300">&bull;</span>
+                    <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">Monitoring Transmisi Fiber Optik</span>
+                    <span id="ringHeaderBadge">
+                    {% if data.stats.is_healthy %}
+                    <span class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center space-x-1 whitespace-nowrap">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>Optimal 100%</span>
+                    </span>
+                    {% else %}
+                    <span class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center space-x-1 whitespace-nowrap">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        <span>{{ data.stats.broken_segments }} Kabel Putus</span>
+                    </span>
+                    {% endif %}
+                    </span>
+                </div>
+                <h1 id="ringHeaderName" class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-1.5 whitespace-nowrap truncate">
+                    {{ data.ring.name }}
+                </h1>
+                <p id="ringHeaderDesc" class="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
+                    {{ data.ring.description or '' }}
+                </p>
+            </div>
+
+            <!-- Header Telemetry Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0">
+                <div class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 text-left min-w-[125px]">
+                    <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wider">Kesehatan Ring</div>
+                    <div id="telemetryHealthPct" class="text-xl font-bold mt-1 {% if data.stats.progress_pct >= 90 %}text-emerald-600{% elif data.stats.progress_pct >= 70 %}text-amber-600{% else %}text-rose-600{% endif %}">
+                        {{ data.stats.progress_pct }}%
+                    </div>
+                    <div id="telemetryHealthStatus" class="text-xs font-medium text-slate-500 mt-0.5 flex items-center space-x-1">
+                        {% if data.stats.is_healthy %}
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                        <span>Normal Aman</span>
+                        {% else %}
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span>
+                        <span>{{ data.stats.broken_segments }} Putus</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 text-left min-w-[125px]">
+                    <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wider">Total Bentangan</div>
+                    <div id="telemetryTotalDistKm" class="text-xl font-bold text-slate-900 mt-1">
+                        {{ data.stats.total_distance_km }} <span class="text-xs font-semibold text-slate-500">KM</span>
+                    </div>
+                    <div id="telemetryTotalDistM" class="text-xs text-slate-500 mt-0.5">
+                        {{ "{:,.0f}".format(data.stats.total_distance_m) }} meter
+                    </div>
+                </div>
+
+                <div class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 text-left min-w-[125px]">
+                    <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wider">Kontinuitas</div>
+                    <div class="text-base font-bold mt-1.5 flex items-center space-x-1.5">
+                        <span id="telemetrySafeSegments" class="text-emerald-600">{{ data.stats.safe_segments }} Aman</span>
+                        <span class="text-slate-300">/</span>
+                        <span id="telemetryBrokenSegments" class="{% if data.stats.broken_segments > 0 %}text-rose-600 font-bold{% else %}text-slate-500{% endif %}">{{ data.stats.broken_segments }} Putus</span>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-0.5 font-medium">{{ data.stats.total_segments }} Segmen</div>
+                </div>
+
+                <div class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 text-left min-w-[125px]">
+                    <div class="text-[11px] text-slate-400 uppercase font-semibold tracking-wider">Total Node</div>
+                    <div class="text-xl font-bold text-pln-blue mt-1">
+                        {{ data.nodes|length }} <span class="text-xs font-semibold text-slate-500">Titik</span>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-0.5">POP & DCU Antara</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TOPOLOGI JARINGAN (HORIZONTAL SCHEMATIC BOARD) -->
+    <!-- ===================================================================== -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+        
+        <!-- Board Header & Legend -->
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/50">
+            <div>
+                <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-diagram-project text-pln-blue"></i>
+                    <span>Topologi Jaringan & Bentangan Kabel Fiber</span>
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Alur transmisi dari <strong class="text-slate-800">POP 1 (MULAI)</strong> &rarr; <strong class="text-slate-800">Titik Antara (DCU)</strong> &rarr; <strong class="text-slate-800">POP 2 (AKHIR)</strong>. Klik kabel untuk toggle status Aman/Putus dan ubah jarak.
+                </p>
+            </div>
+
+            <!-- Enterprise Schematic Legend & Navigation Controls -->
+            <div class="flex items-center flex-wrap gap-2 text-xs">
+                <span class="inline-flex items-center space-x-1.5 text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-medium text-xs">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Kabel Aman</span>
+                </span>
+                <span class="inline-flex items-center space-x-1.5 text-rose-800 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 font-medium text-xs">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>Kabel Putus</span>
+                </span>
+
+                <!-- Fast Navigation Chevron Buttons -->
+                <div class="flex items-center space-x-1 pl-2 border-l border-slate-200">
+                    <button type="button" onclick="scrollTopologyTrack(-350)" class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-pln-blue flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer" title="Geser Topologi ke Kiri">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <button type="button" onclick="scrollTopologyTrack(350)" class="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-pln-blue flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer" title="Geser Topologi ke Kanan">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Horizontal Pipeline Schematic Track -->
+        <div id="topologyTrack" class="p-6 sm:p-8 overflow-x-auto topology-blueprint select-none cursor-grab">
+            <div class="min-w-max flex items-center justify-start space-x-0 py-6">
+                
+                {% for node in data.nodes %}
+                    {% set node_idx = loop.index0 %}
+                    
+                    <!-- NODE COMPONENT -->
+                    <div class="flex-shrink-0 flex flex-col items-center relative z-20">
+                        
+                        <!-- Top Tag -->
+                        <div class="mb-3">
+                            {% if node.node_type == 'POP_START' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200/90 tracking-wide uppercase shadow-2xs">
+                                POP 1 (MULAI)
+                            </span>
+                            {% elif node.node_type == 'POP_END' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/90 tracking-wide uppercase shadow-2xs">
+                                POP 2 (AKHIR)
+                            </span>
+                            {% else %}
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/90 tracking-wide uppercase shadow-2xs">
+                                {{ node.node_type }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Hardware Card Box -->
+                        <div class="w-56 bg-white border border-slate-200/90 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md rounded-2xl p-4 transition-all relative group/card">
+                            
+                            <!-- Header Node -->
+                            <div class="flex items-start justify-between">
+                                <div class="w-8 h-8 rounded-xl {% if node.node_type == 'POP_START' %}bg-sky-50 text-sky-700 border border-sky-100{% elif node.node_type == 'POP_END' %}bg-amber-50 text-amber-700 border border-amber-100{% else %}bg-slate-50 text-slate-700 border border-slate-100{% endif %} flex items-center justify-center text-xs font-bold">
+                                    {% if node.node_type in ['POP_START', 'POP_END'] %}
+                                    <i class="fa-solid fa-server"></i>
+                                    {% else %}
+                                    <i class="fa-solid fa-microchip"></i>
+                                    {% endif %}
+                                </div>
+
+                                {% if current_user and current_user.role == 'admin' %}
+                                <div class="flex items-center space-x-0.5 opacity-60 group-hover/card:opacity-100 transition-opacity">
+                                    <button onclick="openEditNodeModal({{ node|tojson|forceescape }})" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-xs transition-colors cursor-pointer" title="Edit Detail Node">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    {% if node.node_type not in ['POP_START', 'POP_END'] %}
+                                    <button onclick="deleteNodeConfirm({{ node.id }}, '{{ node.name }}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-xs transition-colors cursor-pointer" title="Hapus Titik ini">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Name & Code -->
+                            <h4 class="font-bold text-xs sm:text-sm text-slate-900 mt-2.5 truncate" title="{{ node.name }}">{{ node.name }}</h4>
+                            <div class="text-xs text-slate-400 mt-0.5">{{ node.code or '-' }}</div>
+
+                            <!-- Details -->
+                            <div class="mt-3 text-xs text-slate-500 border-t border-slate-100 pt-2 space-y-1">
+                                <div class="truncate" title="{{ node.location }}">
+                                    <i class="fa-solid fa-location-dot text-xs text-slate-400 mr-1.5"></i>
+                                    <span>{{ node.location or 'Lokasi belum diisi' }}</span>
+                                </div>
+                                {% if node.detail %}
+                                    {% for k, v in node.detail.items() %}
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-slate-400 uppercase text-[11px]">{{ k }}:</span>
+                                        <span class="text-slate-700 font-medium truncate max-w-[100px]">{{ v }}</span>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                        </div>
+
+                        <!-- Insert DCU Under Node Button -->
+                        {% if current_user and current_user.role == 'admin' and not loop.last %}
+                        <button onclick="openAddNodeModal({{ node.id }})" class="mt-3 text-xs font-semibold text-slate-600 hover:text-pln-blue bg-white hover:bg-slate-50 px-3 py-1 rounded-xl border border-slate-200 hover:border-slate-300 shadow-2xs transition-all flex items-center space-x-1.5 cursor-pointer">
+                            <i class="fa-solid fa-plus text-[10px] text-slate-400"></i>
+                            <span>Sisip DCU</span>
+                        </button>
+                        {% endif %}
+
+                    </div>
+
+                    <!-- CABLE SEGMENT CONNECTOR BETWEEN NODES -->
+                    {% if not loop.last %}
+                        {% set seg = data.segments[node_idx] %}
+                        
+                        <div id="segmentWrap-{{ seg.id }}"
+                             data-segment-id="{{ seg.id }}"
+                             data-status="{{ seg.status }}"
+                             data-distance="{{ seg.distance_m }}"
+                             class="segment-connector flex-grow flex flex-col items-center justify-center px-4 relative min-w-[200px] max-w-[260px] z-10 -mt-8">
+                            
+                            <!-- Toggle Button Status Kabel: AMAN / PUTUS -->
+                            <div id="segStatusBtn-{{ seg.id }}" class="mb-2.5">
+                                {% if seg.status == 'AMAN' %}
+                                    {% if current_user and current_user.role == 'admin' %}
+                                    <button onclick="toggleSegmentStatus({{ seg.id }}, '{{ seg.distance_m }}', '{{ seg.status }}')"
+                                            class="px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100/70 text-emerald-700 border border-emerald-200/90 shadow-2xs flex items-center space-x-1.5 transition-all hover:scale-102 cursor-pointer" title="Klik untuk ubah status ke PUTUS (Merah)">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        <span>Aman</span>
+                                    </button>
+                                    {% else %}
+                                    <span class="px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs flex items-center space-x-1.5">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        <span>Aman</span>
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                    {% if current_user and current_user.role == 'admin' %}
+                                    <button onclick="toggleSegmentStatus({{ seg.id }}, '{{ seg.distance_m }}', '{{ seg.status }}')"
+                                            class="px-3.5 py-1 rounded-full text-xs font-semibold bg-rose-50 hover:bg-rose-100/70 text-rose-700 border border-rose-200/90 shadow-2xs flex items-center space-x-1.5 transition-all hover:scale-102 cursor-pointer" title="Klik untuk ubah status ke AMAN (Hijau)">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        <span>Putus</span>
+                                    </button>
+                                    {% else %}
+                                    <span class="px-3.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/90 shadow-2xs flex items-center space-x-1.5">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        <span>Putus</span>
+                                    </span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+
+                            <!-- Cable Line Indicator (Clickable to Edit) -->
+                            <div id="segCableLine-{{ seg.id }}" class="w-full relative flex items-center justify-center {% if current_user and current_user.role == 'admin' %}cursor-pointer group/line{% endif %} py-1.5" {% if current_user and current_user.role == 'admin' %}onclick="openEditSegmentModal({{ seg.id }})" title="Klik garis untuk edit jarak kabel atau status"{% endif %}>
+                                {% if seg.status == 'AMAN' %}
+                                <div class="w-full h-2 rounded-full bg-emerald-500 shadow-2xs group-hover/line:h-2.5 transition-all relative flex items-center justify-center">
+                                    <span class="text-[9px] text-emerald-100 font-mono tracking-widest opacity-80 select-none">&bull;&bull;&rsaquo;&bull;&bull;</span>
+                                </div>
+                                {% else %}
+                                <div class="w-full h-2 rounded-full bg-rose-500 border-t border-dashed border-rose-300 shadow-2xs group-hover/line:h-2.5 transition-all relative flex items-center justify-center">
+                                    <span class="text-[9px] text-white font-bold bg-rose-700 px-1.5 py-0.2 rounded-full flex items-center space-x-1 shadow-2xs">
+                                        <i class="fa-solid fa-scissors text-[8px]"></i>
+                                        <span>PUTUS</span>
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Distance Badge & Quick Edit Button -->
+                            <div class="mt-2.5 flex flex-col items-center">
+                                {% if current_user and current_user.role == 'admin' %}
+                                <button onclick="openEditSegmentModal({{ seg.id }})"
+                                        class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs flex items-center space-x-1.5 transition-all cursor-pointer group/btn" title="Klik untuk edit jarak kabel">
+                                    <i class="fa-solid fa-ruler-horizontal text-xs text-slate-400 group-hover/btn:text-pln-blue transition-colors"></i>
+                                    <span id="segDistText-{{ seg.id }}" class="font-bold text-slate-900">{{ "{:,.0f}".format(seg.distance_m) }} m</span>
+                                    <span id="segDistKm-{{ seg.id }}" class="text-xs text-slate-400">({{ (seg.distance_m / 1000)|round(2) }} km)</span>
+                                    <i class="fa-solid fa-pen text-[10px] text-slate-400 group-hover/btn:text-pln-blue transition-colors"></i>
+                                </button>
+                                {% else %}
+                                <div class="px-3 py-1.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-ruler-horizontal text-xs text-slate-400"></i>
+                                    <span id="segDistText-{{ seg.id }}" class="font-bold text-slate-900">{{ "{:,.0f}".format(seg.distance_m) }} m</span>
+                                    <span id="segDistKm-{{ seg.id }}" class="text-xs text-slate-400">({{ (seg.distance_m / 1000)|round(2) }} km)</span>
+                                </div>
+                                {% endif %}
+                                <span class="text-xs text-slate-400 mt-1 truncate max-w-[140px]">{{ seg.cable_type or 'ADSS 24 Core' }}</span>
+                            </div>
+
+                        </div>
+                    {% endif %}
+
+                {% endfor %}
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- ENTERPRISE UTILITY PANEL: 3 TABS (NOTEPAD, KABEL SPANS, INVENTARIS) -->
+    <!-- ===================================================================== -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+        
+        <!-- Tab Navigation Header -->
+        <div class="px-6 pt-4 border-b border-slate-200 flex items-center space-x-2 bg-slate-50/50">
+            <button onclick="switchTab('notes')" id="tabBtnNotes" class="px-4 py-3 text-xs font-bold border-b-2 border-pln-blue text-pln-blue transition-all flex items-center space-x-2">
+                <i class="fa-regular fa-note-sticky text-amber-500"></i>
+                <span>Catatan Kendala ({{ data.issues|length }})</span>
+            </button>
+            <button onclick="switchTab('spans')" id="tabBtnSpans" class="px-4 py-3 text-xs font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-ruler-horizontal text-slate-400"></i>
+                <span>Bentangan Kabel ({{ data.segments|length }})</span>
+            </button>
+            <button onclick="switchTab('inventory')" id="tabBtnInventory" class="px-4 py-3 text-xs font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-server text-slate-400"></i>
+                <span>Inventaris Node & Perangkat ({{ data.nodes|length }})</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: CATATAN KENDALA (NOTEPAD KETIK BEBAS RING INI) -->
+        <div id="tabContentNotes" class="p-6 space-y-4">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900">
+                        Catatan Kendala: {{ data.ring.name }}
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Ketik bebas catatan gangguan, kondisi lapangan, atau progres teknisi khusus ring ini.
+                    </p>
+                </div>
+            </div>
+
+            {% if current_user and current_user.role == 'admin' %}
+            <!-- Free-text Quick Note Input -->
+            <form onsubmit="submitQuickNote(event)" class="space-y-2.5">
+                <input type="hidden" name="ring_id" value="{{ data.ring.id }}">
+                <div class="relative">
+                    <textarea id="noteInput" name="note" rows="2" required
+                              onkeydown="handleNoteKeydown(event)"
+                              placeholder="Ketik catatan kendala di sini... (contoh: Kabel KM 3.8 terputus akibat galian, teknisi tim TRC sedang penanganan di lokasi)"
+                              class="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl p-3.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue transition-all resize-none shadow-2xs"></textarea>
+                </div>
+                
+                <!-- Quick Snippets & Save Button -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-center space-x-1.5 flex-wrap text-xs">
+                        <span class="text-slate-400 font-medium mr-1 text-[11px]">Template Cepat:</span>
+                        <button type="button" onclick="insertNoteTemplate('Kabel putus terkena proyek galian di lokasi ')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border border-slate-200 text-[11px] transition-colors cursor-pointer">
+                            + Kabel Putus
+                        </button>
+                        <button type="button" onclick="insertNoteTemplate('Redaman tinggi terdeteksi di segmen ')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border border-slate-200 text-[11px] transition-colors cursor-pointer">
+                            + Redaman Tinggi
+                        </button>
+                        <button type="button" onclick="insertNoteTemplate('Tim TRC sedang penanganan splicing di lokasi ')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg border border-slate-200 text-[11px] transition-colors cursor-pointer">
+                            + Tim TRC Splicing
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        <span class="text-xs text-slate-400 hidden md:inline">
+                            <kbd class="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 rounded">Enter</kbd>
+                        </span>
+                        <button type="submit" class="bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs flex items-center space-x-1.5 transition-all cursor-pointer">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>Simpan Catatan</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+            {% else %}
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 font-medium flex items-center space-x-2">
+                <i class="fa-solid fa-eye text-pln-blue"></i>
+                <span>Mode Viewer: Anda dapat membaca seluruh catatan kendala per ring ini.</span>
+            </div>
+            {% endif %}
+
+            <!-- List of Notes for THIS RING ONLY -->
+            <div class="space-y-2.5 pt-3 border-t border-slate-100">
+                {% if data.issues %}
+                    {% for iss in data.issues %}
+                    <div class="p-3.5 rounded-2xl border {% if iss.status == 'SELESAI' %}bg-slate-50/60 border-slate-200/70 text-slate-500{% else %}bg-white border-slate-200/90 shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-slate-800{% endif %} flex items-start justify-between gap-3 transition-colors">
+                        <div class="flex items-start space-x-3">
+                            {% if current_user and current_user.role == 'admin' %}
+                            <!-- Toggle Status Button -->
+                            <button onclick="toggleNoteStatus({{ iss.id }}, '{{ iss.status }}')" class="mt-0.5 text-sm focus:outline-none cursor-pointer" title="Klik untuk ubah status Selesai / Belum">
+                                {% if iss.status == 'SELESAI' %}
+                                <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                                {% else %}
+                                <i class="fa-regular fa-circle text-slate-400 hover:text-emerald-600 text-base transition-colors"></i>
+                                {% endif %}
+                            </button>
+                            {% else %}
+                            <div class="mt-0.5 text-sm">
+                                {% if iss.status == 'SELESAI' %}
+                                <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                                {% else %}
+                                <i class="fa-regular fa-circle text-slate-400 text-base"></i>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            <div>
+                                <p class="text-xs font-semibold {% if iss.status == 'SELESAI' %}line-through text-slate-400{% else %}text-slate-900{% endif %} whitespace-pre-line leading-relaxed">
+                                    {{ iss.title }}
+                                </p>
+                                {% if iss.description and iss.description != iss.title %}
+                                <p class="text-xs text-slate-500 mt-1 whitespace-pre-line">{{ iss.description }}</p>
+                                {% endif %}
+                                <div class="flex items-center space-x-3 text-xs text-slate-500 mt-1.5">
+                                    <span class="text-slate-400"><i class="fa-regular fa-clock mr-1 text-[10px]"></i>{{ iss.created_at[:16] if iss.created_at else '-' }}</span>
+                                    {% if iss.status == 'SELESAI' %}
+                                    <span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-medium text-[11px] border border-emerald-100"><i class="fa-solid fa-check mr-0.5"></i>Selesai</span>
+                                    {% else %}
+                                    <span class="text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-medium text-[11px] border border-amber-100"><i class="fa-solid fa-hourglass-half mr-0.5"></i>Dalam Penanganan</span>
+                                    {% endif %}
+                                    {% if iss.pic %}
+                                    <span class="text-slate-500"><i class="fa-solid fa-user text-slate-400 mr-1"></i>{{ iss.pic }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if current_user and current_user.role == 'admin' %}
+                        <!-- Delete Note Button -->
+                        <button onclick="deleteIssueConfirm({{ iss.id }})" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer" title="Hapus Catatan">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="fa-regular fa-note-sticky text-3xl mb-2 text-slate-300"></i>
+                        <p class="text-xs font-bold text-slate-700">Belum ada catatan kendala untuk {{ data.ring.name }}.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Ketik bebas pada kolom di atas untuk menambahkan catatan kendala atau progres lapangan.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- TAB 2: TABEL BENTANGAN KABEL FO -->
+        <div id="tabContentSpans" class="hidden p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 text-xs">
+                        <tr>
+                            <th class="px-4 py-3">No</th>
+                            <th class="px-4 py-3">Rute Titik (Asal &rarr; Tujuan)</th>
+                            <th class="px-4 py-3">Panjang Kabel</th>
+                            <th class="px-4 py-3">Status Kontinuitas</th>
+                            <th class="px-4 py-3">Tipe Kabel</th>
+                            <th class="px-4 py-3">Catatan Jalur</th>
+                            <th class="px-4 py-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for s in data.segments %}
+                        <tr id="tableSegRow-{{ s.id }}" class="hover:bg-slate-50/70 transition-colors">
+                            <td class="px-4 py-3 font-medium text-slate-500">{{ loop.index }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="font-bold text-slate-900 flex items-center space-x-1.5">
+                                    <span>{{ s.from_node_name }}</span>
+                                    <i class="fa-solid fa-arrow-right text-xs text-slate-400"></i>
+                                    <span>{{ s.to_node_name }}</span>
+                                </div>
+                            </td>
+                            <td id="tableSegDist-{{ s.id }}" class="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
+                                {{ "{:,.0f}".format(s.distance_m) }} m <span class="font-normal text-slate-500">({{ (s.distance_m / 1000)|round(2) }} km)</span>
+                            </td>
+                            <td id="tableSegStatus-{{ s.id }}" class="px-4 py-3 whitespace-nowrap">
+                                {% if s.status == 'AMAN' %}
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    AMAN (HIJAU)
+                                </span>
+                                {% else %}
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                                    PUTUS (MERAH)
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-slate-600">{{ s.cable_type or 'ADSS 24 Core' }}</td>
+                            <td class="px-4 py-3 text-slate-500 max-w-xs truncate">{{ s.notes or '-' }}</td>
+                            <td class="px-4 py-3 text-right whitespace-nowrap">
+                                {% if current_user and current_user.role == 'admin' %}
+                                <button onclick="openEditSegmentModal({{ s|tojson|forceescape }})" class="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 shadow-2xs transition-all">
+                                    <i class="fa-solid fa-pen text-xs mr-1 text-slate-400"></i> Edit Jarak / Status
+                                </button>
+                                {% else %}
+                                <span class="text-xs text-slate-400 font-medium italic">View Only</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: TABEL INVENTARIS NODE & PERANGKAT -->
+        <div id="tabContentInventory" class="hidden p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-700">
+                    <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 text-xs">
+                        <tr>
+                            <th class="px-4 py-3">Urutan</th>
+                            <th class="px-4 py-3">Tipe Titik</th>
+                            <th class="px-4 py-3">Nama Perangkat</th>
+                            <th class="px-4 py-3">Kode Titik</th>
+                            <th class="px-4 py-3">Lokasi / Area</th>
+                            <th class="px-4 py-3">Koordinat GPS</th>
+                            <th class="px-4 py-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for n in data.nodes %}
+                        <tr class="hover:bg-slate-50/70 transition-colors">
+                            <td class="px-4 py-3 font-medium text-slate-500">#{{ n.position_order }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                {% if n.node_type == 'POP_START' %}
+                                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-pln-blue border border-blue-200">POP 1 (MULAI)</span>
+                                {% elif n.node_type == 'POP_END' %}
+                                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">POP 2 (AKHIR)</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">{{ n.node_type }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">{{ n.name }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ n.code or '-' }}</td>
+                            <td class="px-4 py-3 text-slate-500">{{ n.location or '-' }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ n.coordinates or '-' }}</td>
+                            <td class="px-4 py-3 text-right whitespace-nowrap">
+                                {% if current_user and current_user.role == 'admin' %}
+                                <button onclick="openEditNodeModal({{ n|tojson|forceescape }})" class="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 shadow-2xs transition-all mr-1">
+                                    <i class="fa-solid fa-pen text-xs mr-1 text-slate-400"></i> Edit
+                                </button>
+                                {% if n.node_type not in ['POP_START', 'POP_END'] %}
+                                <button onclick="deleteNodeConfirm({{ n.id }}, '{{ n.name }}')" class="px-2 py-1 bg-white hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-semibold text-rose-600 transition-all" title="Hapus Titik">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-xs text-slate-400 font-medium italic">View Only</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ========================================================================= -->
+<!-- CLEAN ENTERPRISE MODALS -->
+<!-- ========================================================================= -->
+
+<!-- 0. Modal Edit Identitas Ring -->
+<div id="editRingModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-xl relative">
+        <button onclick="closeEditRingModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="mb-4">
+            <h3 class="font-bold text-base text-slate-900 flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-pln-blue"></i>
+                <span>Edit Identitas Ring</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">Perbarui nama ring, kode identifikasi unik, atau deskripsi rute jaringan</p>
+        </div>
+
+        <form id="editRingForm" onsubmit="saveRingUpdate(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Nama Ring Jaringan <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" id="editRingName" name="name" required value="{{ data.ring.name }}"
+                       placeholder="Contoh: Ring 1 - Banten"
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-semibold">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Kode Ring (Unik) <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" id="editRingCode" name="code" required value="{{ data.ring.code }}"
+                       placeholder="Contoh: BANTEN"
+                       class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-mono font-bold uppercase">
+                <p class="text-[11px] text-slate-400 mt-1">Kode digunakan sebagai pengenal sistem dan tidak boleh kembar dengan ring lain.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Deskripsi / Catatan Jalur</label>
+                <textarea id="editRingDesc" name="description" rows="3"
+                          placeholder="Keterangan rute atau rincian jalur ring fiber optik..."
+                          class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">{{ data.ring.description or '' }}</textarea>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeEditRingModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-all cursor-pointer">
+                    Batal
+                </button>
+                <button type="submit" id="btnSaveRing" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer">
+                    <i class="fa-solid fa-floppy-disk text-xs"></i>
+                    <span>Simpan Perubahan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 1. Modal Edit Segmen Kabel (Jarak & Status Aman/Putus) -->
+<div id="segmentModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+        <button onclick="closeEditSegmentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="mb-4">
+            <h3 class="font-bold text-base text-slate-900">Edit Segmen Kabel Fiber</h3>
+            <p id="segModalSub" class="text-xs text-slate-500 mt-0.5">Titik A &rarr; Titik B</p>
+        </div>
+
+        <form id="segmentForm" onsubmit="saveSegmentUpdate(event)" class="space-y-4">
+            <input type="hidden" id="segId" name="segment_id">
+            <input type="hidden" id="segFromNodeId" name="from_node_id">
+            <input type="hidden" id="segToNodeId" name="to_node_id">
+
+            <!-- Status Switcher (Aman vs Putus) -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Status Kabel:</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="status" value="AMAN" id="statusAmanRadio" class="peer sr-only">
+                        <div class="p-3 rounded-xl border border-slate-300 bg-white peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-800 text-slate-600 flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-check text-emerald-600"></i>
+                            <span class="font-bold text-xs">AMAN (HIJAU)</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="status" value="PUTUS" id="statusPutusRadio" class="peer sr-only">
+                        <div class="p-3 rounded-xl border border-slate-300 bg-white peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-800 text-slate-600 flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+                            <span class="font-bold text-xs">PUTUS (MERAH)</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Jarak Manual (Meter) Bebas -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Jarak Antar Titik (Meter) <span class="text-slate-500 font-normal text-xs">(Bebas diisi manual)</span>
+                </label>
+                <div class="relative">
+                    <input type="number" id="segDistance" name="distance_m" step="any" placeholder="Ketik bebas jarak kabel (meter)..."
+                           class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue font-bold">
+                    <span class="absolute right-3 top-2 text-xs text-slate-400 font-medium">Meter</span>
+                </div>
+                <p id="segDistanceKmHint" class="text-xs text-pln-blue mt-1 font-medium">Setara dengan: 0.00 KM</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Catatan Jalur Kabel</label>
+                <textarea id="segNotes" name="notes" rows="2" placeholder="Contoh: Rute udara Jl. Panglima Polim, kabel ADSS 48 core"
+                          class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue"></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button type="button" onclick="closeEditSegmentModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-bold rounded-xl shadow-xs transition-all">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. Modal Tambah Titik Antara (DCU / ODC / FAT) -->
+<div id="addNodeModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+    <div class="bg-white border border-slate-200 rounded-xl max-w-lg w-full p-6 shadow-xl relative">
+        <button onclick="closeAddNodeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="mb-4">
+            <h3 class="font-bold text-base text-slate-900">Tambah Titik Antara (DCU / Node)</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Sisipkan perangkat baru di antara titik jaringan ring</p>
+        </div>
+
+        <form id="addNodeForm" onsubmit="saveNewNode(event)" class="space-y-3">
+            <input type="hidden" name="ring_id" value="{{ data.ring.id }}">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Tipe Titik</label>
+                    <select name="node_type" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                        <option value="DCU">DCU (Data Concentrator Unit)</option>
+                        <option value="ODC">ODC (Optical Distribution Cabinet)</option>
+                        <option value="ODP">ODP / FAT</option>
+                        <option value="GARDU">Gardu Hubung / Distribusi</option>
+                        <option value="TIANG">Tiang Fiber</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Sisipkan Setelah Node:</label>
+                    <select id="afterNodeSelect" name="after_node_id" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                        {% for n in data.nodes[:-1] %}
+                        <option value="{{ n.id }}">{{ n.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                    Nama Titik / Perangkat <span class="text-slate-400 font-normal text-[11px]">(Opsional - otomatis jika kosong)</span>
+                </label>
+                <input type="text" name="name" placeholder="Contoh: DCU 03 - Blok M (Boleh dikosongkan)"
+                       class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Kode Perangkat <span class="text-slate-400 font-normal text-[11px]">(Opsional)</span></label>
+                    <input type="text" name="code" placeholder="Contoh: DCU-BM-03"
+                           class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Gardu / Area <span class="text-slate-400 font-normal text-[11px]">(Opsional)</span></label>
+                    <input type="text" name="gardu" placeholder="Contoh: GH BM-07"
+                           class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Alamat / Lokasi Titik <span class="text-slate-400 font-normal text-[11px]">(Opsional)</span></label>
+                <input type="text" name="location" placeholder="Contoh: Jl. Melawai Raya, Kebayoran Baru"
+                       class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 border-t border-slate-100 pt-2">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-slate-700">Jarak Sebelum Node (m)</label>
+                        <button type="button" onclick="resetDistanceBeforeToPreceding()" class="text-[10px] text-pln-blue hover:text-pln-darkBlue font-semibold cursor-pointer" title="Kembalikan ke jarak asli segmen kotak sebelumnya">
+                            <i class="fa-solid fa-rotate-left mr-0.5"></i> Reset Asli
+                        </button>
+                    </div>
+                    <input type="number" id="addNodeDistBefore" name="distance_before" step="any" placeholder="Otomatis mengikuti kotak sebelumnya"
+                           class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                    <p id="distBeforeHint" class="text-[11px] text-slate-500 mt-1 min-h-[16px] leading-tight"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Jarak Sesudah Node (m)</label>
+                    <input type="number" id="addNodeDistAfter" name="distance_after" value="2000" step="any" placeholder="Bebas isi jarak (meter)"
+                           class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                    <p class="text-[11px] text-slate-400 mt-1">Jarak ke titik berikutnya</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeAddNodeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-lg shadow-xs">
+                    Tambahkan Node
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. Modal Edit Detail Node (POP / DCU) -->
+<div id="editNodeModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4" style="display: none;">
+    <div class="bg-white border border-slate-200 rounded-xl max-w-lg w-full p-6 shadow-xl relative">
+        <button onclick="closeEditNodeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="mb-4">
+            <h3 class="font-bold text-base text-slate-900">Edit Detail Titik / Node</h3>
+            <p id="editNodeSub" class="text-xs text-slate-500 mt-0.5">Pengaturan informasi teknis node</p>
+        </div>
+
+        <form id="editNodeForm" onsubmit="saveNodeDetailUpdate(event)" class="space-y-3">
+            <input type="hidden" id="editNodeId" name="node_id">
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Node <span class="text-rose-500">*</span></label>
+                <input type="text" id="editNodeName" name="name" required
+                       class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Kode Titik</label>
+                    <input type="text" id="editNodeCode" name="code"
+                           class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Koordinat GPS</label>
+                    <input type="text" id="editNodeCoords" name="coordinates" placeholder="-6.2088, 106.8184"
+                           class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Alamat / Lokasi</label>
+                <input type="text" id="editNodeLocation" name="location"
+                       class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Detail Parameter (JSON)</label>
+                <textarea id="editNodeDetail" name="detail" rows="2" placeholder='{"kapasitas": "24 Core", "pic": "Budi"}'
+                          class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-pln-blue"></textarea>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeEditNodeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg">
+                    Batal
+                </button>
+                <button type="submit" class="px-4 py-2 bg-pln-blue hover:bg-pln-darkBlue text-white text-xs font-semibold rounded-lg shadow-xs">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // =========================================================================
+    // INSTANT STATE & DATA MANAGEMENT
+    // =========================================================================
+    const currentRingId = {{ data.ring.id }};
+    const segmentDataMap = {};
+    {% for seg in data.segments %}
+    segmentDataMap[{{ seg.id }}] = {
+        id: {{ seg.id }},
+        ring_id: {{ seg.ring_id }},
+        from_node_id: {{ seg.from_node_id }},
+        to_node_id: {{ seg.to_node_id }},
+        from_node_name: {{ (seg.from_node_name or 'POP')|tojson }},
+        to_node_name: {{ (seg.to_node_name or 'POP')|tojson }},
+        distance_m: {{ seg.distance_m }},
+        status: {{ seg.status|tojson }},
+        cable_type: {{ (seg.cable_type or 'ADSS 24 Core')|tojson }},
+        notes: {{ (seg.notes or '')|tojson }}
+    };
+    {% endfor %}
+
+    // Update telemetry UI indicators in header
+    function updateTelemetryUI(stats) {
+        if (!stats) return;
+
+        // 1. Health %
+        const healthEl = document.getElementById('telemetryHealthPct');
+        if (healthEl) {
+            healthEl.innerText = `${stats.progress_pct}%`;
+            healthEl.className = `text-xl font-bold mt-1 ${
+                stats.progress_pct >= 90 ? 'text-emerald-600' : (stats.progress_pct >= 70 ? 'text-amber-600' : 'text-rose-600')
+            }`;
+        }
+
+        // 2. Health status sub-indicator
+        const statusSubEl = document.getElementById('telemetryHealthStatus');
+        if (statusSubEl) {
+            if (stats.is_healthy) {
+                statusSubEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span><span>Normal Aman</span>`;
+            } else {
+                statusSubEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span><span>${stats.broken_segments} Putus</span>`;
+            }
+        }
+
+        // 3. Header top badge
+        const headerBadge = document.getElementById('ringHeaderBadge');
+        if (headerBadge) {
+            if (stats.is_healthy) {
+                headerBadge.innerHTML = `<span class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center space-x-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span><span>Optimal 100%</span></span>`;
+            } else {
+                headerBadge.innerHTML = `<span class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 flex items-center space-x-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span><span>${stats.broken_segments} Kabel Putus</span></span>`;
+            }
+        }
+
+        // 4. Distances
+        const distKmEl = document.getElementById('telemetryTotalDistKm');
+        if (distKmEl) distKmEl.innerHTML = `${stats.total_distance_km} <span class="text-xs font-semibold text-slate-500">KM</span>`;
+        const distMEl = document.getElementById('telemetryTotalDistM');
+        if (distMEl) distMEl.innerText = `${Math.round(stats.total_distance_m).toLocaleString('id-ID')} meter`;
+
+        // 5. Counts
+        const safeEl = document.getElementById('telemetrySafeSegments');
+        if (safeEl) safeEl.innerText = `${stats.safe_segments} Aman`;
+        const brokenEl = document.getElementById('telemetryBrokenSegments');
+        if (brokenEl) {
+            brokenEl.innerText = `${stats.broken_segments} Putus`;
+            brokenEl.className = stats.broken_segments > 0 ? 'text-rose-600 font-bold' : 'text-slate-500';
+        }
+    }
+
+    // Direct instant DOM update for a specific segment
+    function updateSegmentDOM(segId, status, distance_m, notes) {
+        segId = parseInt(segId);
+        if (segmentDataMap[segId]) {
+            segmentDataMap[segId].status = status;
+            if (distance_m !== undefined && distance_m !== null) {
+                segmentDataMap[segId].distance_m = parseFloat(distance_m);
+            }
+            if (notes !== undefined && notes !== null) {
+                segmentDataMap[segId].notes = notes;
+            }
+        }
+
+        const wrap = document.getElementById(`segmentWrap-${segId}`);
+        if (wrap) {
+            wrap.setAttribute('data-status', status);
+            if (distance_m) wrap.setAttribute('data-distance', distance_m);
+        }
+
+        // 1. Update Status Toggle Button
+        const statusBtnContainer = document.getElementById(`segStatusBtn-${segId}`);
+        if (statusBtnContainer) {
+            const numDist = distance_m || (segmentDataMap[segId] ? segmentDataMap[segId].distance_m : 0);
+            if (status === 'AMAN') {
+                statusBtnContainer.innerHTML = `
+                    <button onclick="toggleSegmentStatus(${segId}, '${numDist}', 'AMAN')"
+                            class="px-3.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 hover:bg-emerald-100/70 text-emerald-700 border border-emerald-200/90 shadow-2xs flex items-center space-x-1.5 transition-all hover:scale-102 cursor-pointer" title="Klik untuk ubah status ke PUTUS (Merah)">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>Aman</span>
+                    </button>
+                `;
+            } else {
+                statusBtnContainer.innerHTML = `
+                    <button onclick="toggleSegmentStatus(${segId}, '${numDist}', 'PUTUS')"
+                            class="px-3.5 py-1 rounded-full text-xs font-semibold bg-rose-50 hover:bg-rose-100/70 text-rose-700 border border-rose-200/90 shadow-2xs flex items-center space-x-1.5 transition-all hover:scale-102 cursor-pointer" title="Klik untuk ubah status ke AMAN (Hijau)">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        <span>Putus</span>
+                    </button>
+                `;
+            }
+        }
+
+        // 2. Update Cable Line
+        const cableLine = document.getElementById(`segCableLine-${segId}`);
+        if (cableLine) {
+            if (status === 'AMAN') {
+                cableLine.innerHTML = `
+                    <div class="w-full h-2 rounded-full bg-emerald-500 shadow-2xs group-hover/line:h-2.5 transition-all relative flex items-center justify-center">
+                        <span class="text-[9px] text-emerald-100 font-mono tracking-widest opacity-80 select-none">&bull;&bull;&rsaquo;&bull;&bull;</span>
+                    </div>
+                `;
+            } else {
+                cableLine.innerHTML = `
+                    <div class="w-full h-2 rounded-full bg-rose-500 border-t border-dashed border-rose-300 shadow-2xs group-hover/line:h-2.5 transition-all relative flex items-center justify-center">
+                        <span class="text-[9px] text-white font-bold bg-rose-700 px-1.5 py-0.2 rounded-full flex items-center space-x-1 shadow-2xs">
+                            <i class="fa-solid fa-scissors text-[8px]"></i>
+                            <span>PUTUS</span>
+                        </span>
+                    </div>
+                `;
+            }
+        }
+
+        // 3. Update Distance Text on canvas
+        if (distance_m !== undefined && distance_m !== null) {
+            const numDist = parseFloat(distance_m) || 0;
+            const km = (numDist / 1000).toFixed(2);
+            const distText = document.getElementById(`segDistText-${segId}`);
+            if (distText) distText.innerText = `${Math.round(numDist).toLocaleString('id-ID')} m`;
+            const distKm = document.getElementById(`segDistKm-${segId}`);
+            if (distKm) distKm.innerText = `(${km} km)`;
+        }
+
+        // 4. Update Spans table row
+        const distCell = document.getElementById(`tableSegDist-${segId}`);
+        const statusCell = document.getElementById(`tableSegStatus-${segId}`);
+        if (distCell && distance_m !== undefined && distance_m !== null) {
+            const numDist = parseFloat(distance_m) || 0;
+            const km = (numDist / 1000).toFixed(2);
+            distCell.innerHTML = `${Math.round(numDist).toLocaleString('id-ID')} m <span class="font-normal text-slate-500">(${km} km)</span>`;
+        }
+        if (statusCell) {
+            if (status === 'AMAN') {
+                statusCell.innerHTML = `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">AMAN (HIJAU)</span>`;
+            } else {
+                statusCell.innerHTML = `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">PUTUS (MERAH)</span>`;
+            }
+        }
+    }
+
+    // =========================================================================
+    // RING MODAL LOGIC (Edit Nama, Kode, & Deskripsi Ring)
+    // =========================================================================
+    function openEditRingModal() {
+        const modal = document.getElementById('editRingModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                const el = document.getElementById('editRingName');
+                if (el) { el.focus(); el.select(); }
+            }, 60);
+        }
+    }
+
+    function closeEditRingModal() {
+        const modal = document.getElementById('editRingModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+        }
+    }
+
+    async function saveRingUpdate(e) {
+        e.preventDefault();
+        const name = document.getElementById('editRingName').value.trim();
+        const code = document.getElementById('editRingCode').value.trim().toUpperCase();
+        const description = document.getElementById('editRingDesc').value.trim();
+
+        if (!name || !code) {
+            Notify.toast({
+                type: 'warning',
+                title: 'Data Belum Lengkap',
+                message: 'Nama dan Kode Ring wajib diisi!'
+            });
+            return;
+        }
+
+        const btnSave = document.getElementById('btnSaveRing');
+        const origBtnText = btnSave ? btnSave.innerHTML : '';
+        if (btnSave) {
+            btnSave.disabled = true;
+            btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Menyimpan...</span>`;
+        }
+
+        try {
+            const res = await fetch(`/api/rings/${currentRingId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, code, description })
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                closeEditRingModal();
+
+                // Update DOM instantly
+                const nameEl = document.getElementById('ringHeaderName');
+                if (nameEl) nameEl.innerText = name;
+
+                const codeEl = document.getElementById('ringHeaderCode');
+                if (codeEl) codeEl.innerText = code;
+
+                const descEl = document.getElementById('ringHeaderDesc');
+                if (descEl) descEl.innerText = description;
+
+                // Update tab title
+                document.title = `${name} | Monitoring Jaringan PLN Icon+`;
+
+                Notify.toast({
+                    type: 'success',
+                    title: 'Ring Berhasil Diperbarui',
+                    message: `Informasi ${name} (${code}) telah disimpan.`
+                });
+            } else {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Gagal Menyimpan Ring',
+                    message: result.error || 'Terjadi kesalahan saat memperbarui ring.'
+                });
+            }
+        } catch (err) {
+            Notify.toast({
+                type: 'error',
+                title: 'Kesalahan Jaringan',
+                message: err.message
+            });
+        } finally {
+            if (btnSave) {
+                btnSave.disabled = false;
+                btnSave.innerHTML = origBtnText;
+            }
+        }
+    }
+
+    // =========================================================================
+    // SEGMENT MODAL LOGIC (Status Aman / Putus & Jarak Manual)
+    // =========================================================================
+    function openEditSegmentModal(segmentOrId) {
+        let segment = null;
+        if (typeof segmentOrId === 'object' && segmentOrId !== null) {
+            segment = segmentOrId;
+        } else if (segmentDataMap[segmentOrId]) {
+            segment = segmentDataMap[segmentOrId];
+        }
+        if (!segment) return;
+
+        document.getElementById('segId').value = segment.id;
+        const fromEl = document.getElementById('segFromNodeId');
+        if (fromEl) fromEl.value = segment.from_node_id || '';
+        const toEl = document.getElementById('segToNodeId');
+        if (toEl) toEl.value = segment.to_node_id || '';
+        document.getElementById('segDistance').value = segment.distance_m;
+        document.getElementById('segNotes').value = segment.notes || '';
+        document.getElementById('segModalSub').innerText = `${segment.from_node_name || 'POP 1'} ➔ ${segment.to_node_name || 'POP 2'}`;
+        
+        updateDistanceHint(segment.distance_m);
+
+        if (segment.status === 'PUTUS') {
+            document.getElementById('statusPutusRadio').checked = true;
+        } else {
+            document.getElementById('statusAmanRadio').checked = true;
+        }
+
+        const modal = document.getElementById('segmentModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                const el = document.getElementById('segDistance');
+                if (el) { el.focus(); el.select(); }
+            }, 60);
+        }
+    }
+
+    function closeEditSegmentModal() {
+        const modal = document.getElementById('segmentModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+        }
+    }
+
+    document.getElementById('segDistance').addEventListener('input', function(e) {
+        updateDistanceHint(e.target.value);
+    });
+
+    function updateDistanceHint(val) {
+        const num = parseFloat(val) || 0;
+        const km = (num / 1000).toFixed(2);
+        document.getElementById('segDistanceKmHint').innerText = `Setara dengan: ${km} KM (${num.toLocaleString()} meter)`;
+    }
+
+    async function saveSegmentUpdate(e) {
+        e.preventDefault();
+        const segId = document.getElementById('segId').value;
+        const from_node_id = document.getElementById('segFromNodeId')?.value;
+        const to_node_id = document.getElementById('segToNodeId')?.value;
+        const status = document.querySelector('input[name="status"]:checked').value;
+        const distance_m = document.getElementById('segDistance').value;
+        const notes = document.getElementById('segNotes').value;
+
+        closeEditSegmentModal();
+
+        try {
+            const res = await fetch(`/api/segments/${segId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status, distance_m, notes, from_node_id, to_node_id, ring_id: currentRingId})
+            });
+            const result = await res.json();
+            if (result.success) {
+                const targetSegId = (result.segment && result.segment.id) ? result.segment.id : segId;
+                updateSegmentDOM(targetSegId, status, distance_m, notes);
+                if (result.stats) {
+                    updateTelemetryUI(result.stats);
+                }
+                Notify.toast({
+                    type: 'success',
+                    title: 'Kabel Berhasil Diperbarui',
+                    message: `Jarak ${Math.round(distance_m).toLocaleString('id-ID')} m (${status}) telah tersimpan.`
+                });
+            } else {
+                Notify.toast({
+                    type: 'error',
+                    title: 'Gagal Menyimpan',
+                    message: result.error || 'Terjadi kesalahan'
+                });
+            }
+        } catch (err) {
+            Notify.toast({
+                type: 'error',
+                title: 'Kesalahan Jaringan',
+                message: err.message
+            });
+        }
+    }
+
+    // Quick toggle status aman / putus directly from badge - INSTANT DOM (<0.05s)
+    async function toggleSegmentStatus(segId, currentDist, currentStatus) {
+        const newStatus = currentStatus === 'AMAN' ? 'PUTUS' : 'AMAN';
+        const segInfo = segmentDataMap[segId] || {};
+        
+        const confirm = await Swal.fire({
+            title: `Ubah Status ke ${newStatus}?`,
+            text: newStatus === 'PUTUS' ? 'Kabel akan ditandai PUTUS (Merah)' : 'Kabel akan ditandai AMAN (Hijau)',
+            icon: newStatus === 'PUTUS' ? 'warning' : 'question',
+            showCancelButton: true,
+            confirmButtonText: `Ya, Ubah ke ${newStatus}`,
+            cancelButtonText: 'Batal'
+        });
+
+        if (confirm.isConfirmed) {
+            // Optimistic update: instantly render on screen
+            updateSegmentDOM(segId, newStatus, currentDist);
+
+            try {
+                const res = await fetch(`/api/segments/${segId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        status: newStatus,
+                        distance_m: currentDist,
+                        from_node_id: segInfo.from_node_id,
+                        to_node_id: segInfo.to_node_id,
+                        ring_id: currentRingId
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    const targetSegId = (result.segment && result.segment.id) ? result.segment.id : segId;
+                    updateSegmentDOM(targetSegId, newStatus, currentDist);
+                    if (result.stats) {
+                        updateTelemetryUI(result.stats);
+                    }
+                    Notify.toast({
+                        type: 'success',
+                        title: 'Status Diperbarui',
+                        message: `Kabel berhasil diubah ke ${newStatus}.`
+                    });
+                } else {
+                    // Rollback if rejected by server
+                    updateSegmentDOM(segId, currentStatus, currentDist);
+                    Notify.toast({
+                        type: 'error',
+                        title: 'Gagal Mengubah Status',
+                        message: result.error || 'Terjadi kesalahan'
+                    });
+                }
+            } catch (err) {
+                // Rollback on network error
+                updateSegmentDOM(segId, currentStatus, currentDist);
+                Notify.toast({
+                    type: 'error',
+                    title: 'Kesalahan Jaringan',
+                    message: 'Koneksi terputus. Perubahan dibatalkan.'
+                });
+            }
+        }
+    }
+
+    // =========================================================================
+    // REAL-TIME EVENT ENGINE (SERVER-SENT EVENTS / SSE)
+    // "Hanya menembak ke browser saat ada data yang benar-benar berubah"
+    // Tidak ada spam polling berkala ke server, terminal tetap bersih & hening.
+    // =========================================================================
+    let ringEventSource = null;
+
+    function initRealtimeEvents() {
+        if (!window.EventSource) return;
+        if (ringEventSource) {
+            try { ringEventSource.close(); } catch(e) {}
+        }
+
+        ringEventSource = new EventSource(`/api/rings/${currentRingId}/events`);
+
+        ringEventSource.onmessage = function(event) {
+            try {
+                const msg = JSON.parse(event.data);
+                if (!msg || !msg.type || msg.type === 'CONNECTED') return;
+
+                if (msg.type === 'SEGMENT_UPDATE') {
+                    // Update segment DOM seketika (<0.05 detik)
+                    updateSegmentDOM(msg.segment_id, msg.status, msg.distance_m, msg.notes);
+                    if (msg.stats) {
+                        updateTelemetryUI(msg.stats);
+                    }
+                    Notify.toast({
+                        type: 'info',
+                        title: 'Sinkronisasi Real-Time',
+                        message: `Segmen kabel baru saja diperbarui ke status ${msg.status}.`
+                    });
+                } else if (msg.type === 'TOPOLOGY_CHANGED') {
+                    Notify.toast({
+                        type: 'info',
+                        title: 'Topologi Berubah',
+                        message: 'Titik node baru saja ditambahkan/diubah. Memuat data terbaru...'
+                    });
+                    setTimeout(() => location.reload(), 1200);
+                } else if (msg.type === 'RING_UPDATED' && msg.ring) {
+                    if (msg.ring.name) {
+                        const nameEl = document.getElementById('ringHeaderName');
+                        if (nameEl) nameEl.innerText = msg.ring.name;
+                    }
+                    if (msg.ring.code) {
+                        const codeEl = document.getElementById('ringHeaderCode');
+                        if (codeEl) codeEl.innerText = msg.ring.code;
+                    }
+                    if (msg.ring.description !== undefined) {
+                        const descEl = document.getElementById('ringHeaderDesc');
+                        if (descEl) descEl.innerText = msg.ring.description;
+                    }
+                    Notify.toast({
+                        type: 'info',
+                        title: 'Informasi Ring Berubah',
+                        message: `Ring diperbarui menjadi: ${msg.ring.name}`
+                    });
+                }
+            } catch (err) {
+                console.warn('Gagal memproses SSE event:', err);
+            }
+        };
+
+        ringEventSource.onerror = function() {
+            // Browser otomatis melakukan reconnect sesuai protokol EventSource
+        };
+    }
+
+    initRealtimeEvents();
+
+    window.addEventListener('beforeunload', () => {
+        if (ringEventSource) {
+            try { ringEventSource.close(); } catch(e) {}
+        }
+    });
+
+    // =========================================================================
+    // NODE MODAL LOGIC (DCU & POP)
+    // =========================================================================
+    function getPrecedingNodeDistance(nodeId) {
+        const nid = parseInt(nodeId);
+        const seg = Object.values(segmentDataMap).find(s => s.from_node_id === nid);
+        return seg ? parseFloat(seg.distance_m) : null;
+    }
+
+    function updateAddNodeDistanceDefaults() {
+        const sel = document.getElementById('afterNodeSelect');
+        const distInput = document.getElementById('addNodeDistBefore');
+        const hint = document.getElementById('distBeforeHint');
+        if (!sel || !distInput) return;
+
+        const selectedNodeId = parseInt(sel.value);
+        const prevDist = getPrecedingNodeDistance(selectedNodeId);
+
+        if (prevDist !== null && !isNaN(prevDist)) {
+            distInput.value = prevDist;
+            const nodeName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : 'Kotak Sebelumnya';
+            if (hint) {
+                hint.innerHTML = `<span class="inline-flex items-center text-emerald-600 font-medium">
+                    <i class="fa-solid fa-circle-check text-[10px] mr-1"></i>
+                    Mengikuti jarak sesudah <strong>${nodeName}</strong> (${Math.round(prevDist).toLocaleString('id-ID')} m)
+                </span>`;
+            }
+        } else {
+            distInput.value = 2000;
+            if (hint) hint.innerHTML = `<span class="text-slate-400">Jarak default: 2.000 m</span>`;
+        }
+    }
+
+    function resetDistanceBeforeToPreceding() {
+        updateAddNodeDistanceDefaults();
+        Notify.toast({
+            type: 'info',
+            title: 'Jarak Direset',
+            message: 'Jarak sebelum node dikembalikan mengikuti segmen kotak sebelumnya.'
+        });
+    }
+
+    function openAddNodeModal(afterNodeId = null) {
+        if (afterNodeId) {
+            const sel = document.getElementById('afterNodeSelect');
+            if (sel) sel.value = afterNodeId;
+        }
+        updateAddNodeDistanceDefaults();
+
+        const modal = document.getElementById('addNodeModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                const el = document.querySelector('#addNodeForm input[name="name"]');
+                if (el) el.focus();
+            }, 60);
+        }
+    }
+    function closeAddNodeModal() {
+        const modal = document.getElementById('addNodeModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+        }
+    }
+
+    async function saveNewNode(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+        // Pastikan jika jarak sebelum kosong, otomatis mewarisi segmen kotak sebelumnya
+        if (data.distance_before === undefined || data.distance_before === '') {
+            const sel = document.getElementById('afterNodeSelect');
+            const selectedNodeId = parseInt(sel ? sel.value : 0);
+            const prevDist = getPrecedingNodeDistance(selectedNodeId);
+            if (prevDist !== null) {
+                data.distance_before = prevDist;
+            }
+        }
+
+        try {
+            const res = await fetch('/api/nodes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) {
+                closeAddNodeModal();
+                location.reload();
+            } else {
+                Swal.fire({icon: 'error', title: 'Gagal', text: result.error});
+            }
+        } catch (err) {
+            Swal.fire({icon: 'error', title: 'Error', text: err.message});
+        }
+    }
+
+    // Pasang listener saat dropdown pemilihan node berubah & saat input diubah manual
+    document.addEventListener('DOMContentLoaded', () => {
+        const afterNodeSel = document.getElementById('afterNodeSelect');
+        if (afterNodeSel) {
+            afterNodeSel.addEventListener('change', () => {
+                updateAddNodeDistanceDefaults();
+            });
+        }
+
+        const distBeforeInput = document.getElementById('addNodeDistBefore');
+        if (distBeforeInput) {
+            distBeforeInput.addEventListener('input', function() {
+                const sel = document.getElementById('afterNodeSelect');
+                const selectedNodeId = parseInt(sel ? sel.value : 0);
+                const prevDist = getPrecedingNodeDistance(selectedNodeId);
+                const hint = document.getElementById('distBeforeHint');
+                if (!hint) return;
+
+                const curVal = parseFloat(this.value);
+                if (prevDist !== null && !isNaN(curVal) && Math.abs(curVal - prevDist) > 0.01) {
+                    hint.innerHTML = `<span class="inline-flex items-center text-amber-600 font-medium">
+                        <i class="fa-solid fa-pen text-[10px] mr-1"></i>
+                        Diubah manual (nilai asli kotak: ${Math.round(prevDist).toLocaleString('id-ID')} m)
+                    </span>`;
+                } else if (prevDist !== null) {
+                    const nodeName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : 'Kotak Sebelumnya';
+                    hint.innerHTML = `<span class="inline-flex items-center text-emerald-600 font-medium">
+                        <i class="fa-solid fa-circle-check text-[10px] mr-1"></i>
+                        Mengikuti jarak sesudah <strong>${nodeName}</strong> (${Math.round(prevDist).toLocaleString('id-ID')} m)
+                    </span>`;
+                }
+            });
+        }
+    });
+
+    function openEditNodeModal(node) {
+        document.getElementById('editNodeId').value = node.id;
+        document.getElementById('editNodeName').value = node.name;
+        document.getElementById('editNodeCode').value = node.code || '';
+        document.getElementById('editNodeCoords').value = node.coordinates || '';
+        document.getElementById('editNodeLocation').value = node.location || '';
+        document.getElementById('editNodeDetail').value = JSON.stringify(node.detail || {}, null, 2);
+        document.getElementById('editNodeSub').innerText = `${node.node_type} - ${node.name}`;
+
+        const modal = document.getElementById('editNodeModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                const el = document.getElementById('editNodeName');
+                if (el) { el.focus(); el.select(); }
+            }, 60);
+        }
+    }
+    function closeEditNodeModal() {
+        const modal = document.getElementById('editNodeModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.style.display = 'none';
+        }
+    }
+
+    async function saveNodeDetailUpdate(e) {
+        e.preventDefault();
+        const nodeId = document.getElementById('editNodeId').value;
+        const name = document.getElementById('editNodeName').value;
+        const code = document.getElementById('editNodeCode').value;
+        const coordinates = document.getElementById('editNodeCoords').value;
+        const locationStr = document.getElementById('editNodeLocation').value;
+        let detail = {};
+        try {
+            detail = JSON.parse(document.getElementById('editNodeDetail').value);
+        } catch (err) {
+            detail = {};
+        }
+
+        try {
+            const res = await fetch(`/api/nodes/${nodeId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name, code, coordinates, location: locationStr, detail})
+            });
+            const result = await res.json();
+            if (result.success) {
+                closeEditNodeModal();
+                location.reload();
+            } else {
+                Swal.fire({icon: 'error', title: 'Gagal', text: result.error});
+            }
+        } catch (err) {
+            Swal.fire({icon: 'error', title: 'Error', text: err.message});
+        }
+    }
+
+    async function deleteNodeConfirm(nodeId, nodeName) {
+        const confirm = await Swal.fire({
+            title: `Hapus ${nodeName}?`,
+            text: "Titik ini akan dihapus dan segmen kabel akan digabungkan otomatis.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await fetch(`/api/nodes/${nodeId}`, {method: 'DELETE'});
+                const result = await res.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    Swal.fire({icon: 'error', title: 'Gagal', text: result.error});
+                }
+            } catch (err) {
+                Swal.fire({icon: 'error', title: 'Error', text: err.message});
+            }
+        }
+    }
+    // =========================================================================
+    // TAB SWITCHER (Notes, Cable Spans, Inventory)
+    // =========================================================================
+    function switchTab(tab) {
+        const tabs = ['notes', 'spans', 'inventory'];
+        tabs.forEach(t => {
+            const content = document.getElementById('tabContent' + t.charAt(0).toUpperCase() + t.slice(1));
+            const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+            if (!content || !btn) return;
+            
+            if (t === tab) {
+                content.classList.remove('hidden');
+                btn.className = 'px-4 py-3 text-xs font-bold border-b-2 border-pln-blue text-pln-blue transition-all flex items-center space-x-2';
+            } else {
+                content.classList.add('hidden');
+                btn.className = 'px-4 py-3 text-xs font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-all flex items-center space-x-2';
+            }
+        });
+    }
+
+    // =========================================================================
+    // CATATAN KENDALA (NOTED KETIK BEBAS UNTUK RING INI)
+    // =========================================================================
+    async function submitQuickNote(e) {
+        e.preventDefault();
+        const note = document.getElementById('noteInput').value.trim();
+        const ring_id = "{{ data.ring.id }}";
+        if (!note) return;
+
+        try {
+            const res = await fetch('/api/issues', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ring_id, note})
+            });
+            const result = await res.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                Swal.fire({icon: 'error', title: 'Gagal', text: result.error});
+            }
+        } catch (err) {
+            Swal.fire({icon: 'error', title: 'Error', text: err.message});
+        }
+    }
+
+    async function toggleNoteStatus(issueId, currentStatus) {
+        const newStatus = currentStatus === 'SELESAI' ? 'OPEN' : 'SELESAI';
+        try {
+            const res = await fetch(`/api/issues/${issueId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status: newStatus})
+            });
+            const result = await res.json();
+            if (result.success) {
+                location.reload();
+            }
+        } catch (err) {
+            Swal.fire({icon: 'error', title: 'Error', text: err.message});
+        }
+    }
+
+    async function deleteIssueConfirm(issueId) {
+        const confirm = await Swal.fire({
+            title: 'Hapus Catatan?',
+            text: 'Catatan kendala ini akan dihapus permanen.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await fetch(`/api/issues/${issueId}`, {method: 'DELETE'});
+                const result = await res.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    Swal.fire({icon: 'error', title: 'Gagal', text: result.error});
+                }
+            } catch (err) {
+                Swal.fire({icon: 'error', title: 'Error', text: err.message});
+            }
+        }
+    }
+
+    async function deleteCurrentRing(ringId, ringName) {
+        const confirm = await Swal.fire({
+            title: `Hapus ${ringName}?`,
+            text: 'Seluruh titik dan catatan kendala pada ring ini akan terhapus!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Ya, Hapus Ring',
+            cancelButtonText: 'Batal'
+        });
+
+        if (confirm.isConfirmed) {
+            try {
+                const res = await fetch(`/api/rings/${ringId}`, {method: 'DELETE'});
+                const result = await res.json();
+                if (result.success) {
+                    window.location.href = '/';
+                } else {
+                    Swal.fire({icon: 'error', title: 'Gagal', text: result.error});
+                }
+            } catch (err) {
+                Swal.fire({icon: 'error', title: 'Error', text: err.message});
+            }
+        }
+    }
+
+    // =========================================================================
+    // ERGONOMIC TOPOLOGY HORIZONTAL SCROLL & PAN LOGIC
+    // =========================================================================
+    function initTopologyScroll() {
+        const track = document.getElementById('topologyTrack');
+        if (!track) return;
+
+        // Jangan memblokir scroll atas-bawah; biarkan halaman scroll normal ke atas/bawah.
+        // Geser kanan-kiri hanya jika menekan Shift+Wheel atau menggunakan gesture horizontal.
+        track.addEventListener('wheel', (e) => {
+            if (e.shiftKey && Math.abs(e.deltaY) > 0) {
+                e.preventDefault();
+                track.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+
+        // Mouse drag-to-scroll (pan)
+        let isDown = false;
+        let startX = 0;
+        let scrollLeftPos = 0;
+
+        track.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('textarea') || e.target.closest('a')) return;
+            isDown = true;
+            track.classList.add('cursor-grabbing');
+            track.classList.remove('cursor-grab');
+            startX = e.pageX - track.offsetLeft;
+            scrollLeftPos = track.scrollLeft;
+        });
+
+        const stopDrag = () => {
+            isDown = false;
+            track.classList.remove('cursor-grabbing');
+            track.classList.add('cursor-grab');
+        };
+
+        track.addEventListener('mouseleave', stopDrag);
+        track.addEventListener('mouseup', stopDrag);
+
+        track.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - track.offsetLeft;
+            const walk = (x - startX) * 1.4;
+            track.scrollLeft = scrollLeftPos - walk;
+        });
+    }
+
+    function scrollTopologyTrack(offset) {
+        const track = document.getElementById('topologyTrack');
+        if (track) {
+            track.scrollBy({ left: offset, behavior: 'smooth' });
+        }
+    }
+
+    // =========================================================================
+    // NOTEPAD UX SHORTCUTS & TEMPLATES
+    // =========================================================================
+    function handleNoteKeydown(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            submitQuickNote(e);
+        }
+    }
+
+    function insertNoteTemplate(text) {
+        const input = document.getElementById('noteInput');
+        if (!input) return;
+        if (input.value.trim() === '') {
+            input.value = text;
+        } else {
+            input.value += ' ' + text;
+        }
+        input.focus();
+    }
+
+    // =========================================================================
+    // GLOBAL KEYBOARD SHORTCUTS (Escape to close modals)
+    // =========================================================================
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeEditRingModal();
+            closeEditSegmentModal();
+            closeAddNodeModal();
+            closeEditNodeModal();
+            if (typeof closeNewRingModal === 'function') closeNewRingModal();
+        }
+    });
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', initTopologyScroll);
+    initTopologyScroll();
+</script>
+{% endblock %}

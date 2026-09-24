@@ -1,0 +1,22 @@
+# Environment & Secret files
+.env
+*.env
+
+# SQLite local database
+*.db
+monitoring_pln.db
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

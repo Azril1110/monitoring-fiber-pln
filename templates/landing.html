@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLN Icon+ - Network Operations Center (NOC) Landing Portal</title>
+    <link rel="icon" type="image/webp" href="{{ url_for('static', filename='img/logo-desktop.webp') }}">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pln: {
+                            blue: '#005fa3',
+                            darkBlue: '#003761',
+                            lightBlue: '#f0f7ff',
+                            teal: '#00a39e',
+                            yellow: '#f59e0b',
+                            accent: '#0284c7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .clean-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease-in-out;
+        }
+        .clean-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased bg-slate-50 selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- Top Utility Bar -->
+    <div class="bg-slate-900 text-slate-300 text-xs py-2.5 px-4 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center space-x-2 font-medium text-emerald-400">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span class="tracking-wide text-[11px]">NOC OPERATIONAL LIVE</span>
+                </span>
+                <span class="text-slate-700 hidden sm:inline">&bull;</span>
+                <span class="text-slate-400 hidden sm:inline text-[11px]">PT PLN Icon Plus &bull; Sistem Monitoring Fiber Optik & SCADA</span>
+            </div>
+            
+            <div class="flex items-center space-x-4 text-[11px] font-medium">
+                <span id="landingClock" class="flex items-center space-x-1.5 text-slate-200">
+                    <i class="fa-regular fa-clock text-xs mr-1 text-slate-400"></i>
+                    <span>--:--:-- WIB</span>
+                </span>
+                {% if current_user and current_user.is_authenticated %}
+                <span class="text-slate-700">&bull;</span>
+                <span class="text-sky-400 font-semibold">@{{ current_user.username }} ({{ current_user.role|upper }})</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Header Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                
+                <!-- Logo & Brand -->
+                <a href="#tentang" class="flex items-center space-x-4 group">
+                    <div class="p-1.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs group-hover:border-slate-300 transition-colors">
+                        <img src="{{ url_for('static', filename='img/logo-desktop.webp') }}" 
+                             alt="Logo PLN Icon Plus" 
+                             class="h-8 sm:h-9 w-auto object-contain">
+                    </div>
+                    <div class="border-l border-slate-200 pl-3.5">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-bold text-slate-900 tracking-tight uppercase">PLN Icon+</span>
+                            <span class="text-[10px] font-semibold bg-blue-50 text-pln-blue border border-blue-200 px-2 py-0.5 rounded-md">PORTAL NOC</span>
+                        </div>
+                        <p class="text-xs text-slate-500 font-normal mt-0.5">Network Operations Center</p>
+                    </div>
+                </a>
+
+                <!-- Nav Links (Desktop) -->
+                <nav class="hidden md:flex items-center space-x-8 text-xs sm:text-sm font-medium text-slate-600">
+                    <a href="#tentang" class="hover:text-pln-blue transition-colors">Tentang NOC</a>
+                    <a href="#fitur" class="hover:text-pln-blue transition-colors">Fitur Telemetri</a>
+                    <a href="#infrastruktur" class="hover:text-pln-blue transition-colors">Infrastruktur Ring</a>
+                    <a href="#faq" class="hover:text-pln-blue transition-colors">FAQ & Bantuan</a>
+                </nav>
+
+                <!-- Action CTA Button -->
+                <div class="flex items-center space-x-3">
+                    {% if current_user and current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="bg-pln-blue hover:bg-pln-darkBlue text-white font-semibold text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-xl shadow-xs transition-all flex items-center space-x-2 cursor-pointer">
+                        <i class="fa-solid fa-gauge-high text-xs"></i>
+                        <span>Buka Dashboard NOC</span>
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs sm:text-sm px-3.5 py-2.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer" title="Keluar dari Sistem">
+                        <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                        <span class="hidden sm:inline">Logout</span>
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="bg-pln-blue hover:bg-pln-darkBlue text-white font-semibold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-xs transition-all flex items-center space-x-2 cursor-pointer">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                        <span>Masuk Portal Login</span>
+                    </a>
+                    {% endif %}
+
+                    <!-- Mobile Menu Toggle Button -->
+                    <button type="button" onclick="toggleMobileMenu()" class="md:hidden p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                        <i class="fa-solid fa-bars text-sm"></i>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Mobile Dropdown -->
+            <div id="mobileMenu" class="hidden md:hidden border-t border-slate-200 py-3 space-y-2 text-xs font-semibold text-slate-700">
+                <a href="#tentang" onclick="toggleMobileMenu()" class="block px-3 py-2 rounded-lg hover:bg-slate-100">Tentang NOC</a>
+                <a href="#fitur" onclick="toggleMobileMenu()" class="block px-3 py-2 rounded-lg hover:bg-slate-100">Fitur Telemetri</a>
+                <a href="#infrastruktur" onclick="toggleMobileMenu()" class="block px-3 py-2 rounded-lg hover:bg-slate-100">Infrastruktur Ring</a>
+                <a href="#faq" onclick="toggleMobileMenu()" class="block px-3 py-2 rounded-lg hover:bg-slate-100">FAQ & Bantuan</a>
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded-lg text-rose-600 bg-rose-50 font-bold">
+                    <i class="fa-solid fa-right-from-bracket text-xs mr-1"></i> Logout (Keluar)
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow">
+        
+        <!-- HERO SECTION (#tentang) -->
+        <section id="tentang" class="py-16 sm:py-24 bg-white border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+                    
+                    <!-- Left Column: Balanced Typography -->
+                    <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+                        
+                        <!-- Top Tagline Pill -->
+                        <div class="inline-flex items-center space-x-2 bg-blue-50/80 border border-blue-200/60 px-3.5 py-1.5 rounded-full text-xs text-pln-blue font-medium">
+                            <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                            <span>Sistem Pemantauan Kontinuitas FO Real-Time</span>
+                        </div>
+
+                        <!-- Balanced Headline & Subtitle -->
+                        <div class="space-y-1.5">
+                            <h1 class="tracking-tight leading-none">
+                                <span class="block font-black text-slate-900 whitespace-nowrap" style="font-size: clamp(22px, 3.15vw, 45px);">Monitoring Transmisi Fiber Optik</span>
+                                <span class="block font-black text-pln-blue whitespace-nowrap mt-1.5" style="font-size: clamp(18px, 2.5vw, 36px);">PLN Icon Plus</span>
+                            </h1>
+
+                            <p class="text-slate-600 font-normal leading-relaxed max-w-xl mx-auto lg:mx-0 pt-2" style="font-size: clamp(13px, 1.1vw, 16px);">
+                                Pengawasan real-time kontinuitas rute kabel optik ADSS 24 Core, status titik gardu DCU, dan deteksi kendala transmisi per loop ring secara terpusat.
+                            </p>
+                        </div>
+
+                        <!-- Hero Action Buttons -->
+                        <div class="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5">
+                            {% if current_user and current_user.is_authenticated %}
+                            <a href="{{ url_for('dashboard') }}" class="w-full sm:w-auto px-7 py-3 bg-pln-blue hover:bg-pln-darkBlue text-white font-semibold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                                <i class="fa-solid fa-chart-pie text-xs"></i>
+                                <span>Buka Dashboard NOC</span>
+                                <i class="fa-solid fa-arrow-right text-xs ml-1"></i>
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('login') }}" class="w-full sm:w-auto px-7 py-3 bg-pln-blue hover:bg-pln-darkBlue text-white font-semibold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                                <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                                <span>Masuk ke Portal Login</span>
+                                <i class="fa-solid fa-arrow-right text-xs ml-1"></i>
+                            </a>
+                            <a href="#fitur" class="w-full sm:w-auto px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-sm rounded-xl border border-slate-200 transition-colors flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-circle-info text-slate-400 text-xs"></i>
+                                <span>Pelajari Fitur NOC</span>
+                            </a>
+                            {% endif %}
+                        </div>
+
+                        <!-- Clean Specs List -->
+                        <div class="pt-6 border-t border-slate-100 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 font-medium">
+                            <span class="flex items-center space-x-2">
+                                <i class="fa-solid fa-check text-emerald-600"></i>
+                                <span>Kabel ADSS 24 Core</span>
+                            </span>
+                            <span class="flex items-center space-x-2">
+                                <i class="fa-solid fa-bolt text-amber-500"></i>
+                                <span>Supabase Cloud Sync</span>
+                            </span>
+                            <span class="flex items-center space-x-2">
+                                <i class="fa-solid fa-user-shield text-pln-blue"></i>
+                                <span>Hak Akses Admin & Viewer</span>
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Column: Clean Schematic Preview -->
+                    <div class="lg:col-span-5">
+                        <div class="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs space-y-5">
+                            
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span class="text-xs font-semibold text-slate-800 uppercase tracking-wider">Live Status Telemetri</span>
+                                </div>
+                                <span class="px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">SYSTEM ACTIVE</span>
+                            </div>
+
+                            <!-- Schematic Line -->
+                            <div class="bg-slate-50/80 rounded-xl p-4 border border-slate-200/80 space-y-4">
+                                <div class="flex items-center justify-between text-xs font-medium text-slate-600">
+                                    <span>GARDU POP 1</span>
+                                    <span class="text-pln-blue font-bold">5,000 M</span>
+                                    <span>GARDU POP 2</span>
+                                </div>
+                                
+                                <div class="flex items-center justify-between relative py-2">
+                                    <div class="w-9 h-9 rounded-lg bg-blue-100/80 border border-blue-200 text-pln-blue flex items-center justify-center text-xs shadow-2xs">
+                                        <i class="fa-solid fa-server"></i>
+                                    </div>
+                                    <div class="flex-grow mx-3 h-2 rounded-full bg-emerald-500 relative flex items-center justify-center">
+                                        <span class="text-[9px] bg-white text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-300">KABEL AMAN</span>
+                                    </div>
+                                    <div class="w-9 h-9 rounded-lg bg-amber-100/80 border border-amber-200 text-amber-700 flex items-center justify-center text-xs shadow-2xs">
+                                        <i class="fa-solid fa-server"></i>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
+                                    <span>Standar: <strong class="text-slate-700 font-semibold">ADSS 24 Core</strong></span>
+                                    <span>Protokol: <strong class="text-slate-700 font-semibold">Real-Time SSE</strong></span>
+                                </div>
+                            </div>
+
+                            <!-- Status Summary Pill -->
+                            <div class="bg-blue-50/50 rounded-xl p-3.5 border border-blue-100 flex items-center justify-between text-xs text-slate-700">
+                                <div class="flex items-center space-x-2.5">
+                                    <i class="fa-solid fa-circle-check text-pln-blue text-sm"></i>
+                                    <span class="font-medium text-slate-800">Transmisi Monitored: <strong>{{ data.total_rings }} Loop Ring</strong></span>
+                                </div>
+                                <span class="text-[11px] font-bold text-pln-blue">{{ data.total_distance_km }} KM</span>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: METRICS STATISTICS -->
+        <section class="py-12 bg-slate-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                    
+                    <div class="clean-card rounded-2xl p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Ring Monitored</span>
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-pln-blue flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-circle-nodes"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-2xl sm:text-3xl font-bold text-slate-900">{{ data.total_rings }}</div>
+                            <p class="text-xs text-slate-500 mt-1 leading-normal">Loop transmisi terdaftar</p>
+                        </div>
+                    </div>
+
+                    <div class="clean-card rounded-2xl p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Bentangan</span>
+                            <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-ruler-combined"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-2xl sm:text-3xl font-bold text-pln-blue">{{ data.total_distance_km }} <span class="text-xs font-normal text-slate-500">KM</span></div>
+                            <p class="text-xs text-slate-500 mt-1 leading-normal">Total jalur fiber optik</p>
+                        </div>
+                    </div>
+
+                    <div class="clean-card rounded-2xl p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Kesehatan Jaringan</span>
+                            <div class="w-8 h-8 rounded-lg {% if data.overall_health_pct >= 90 %}bg-emerald-50 text-emerald-600{% else %}bg-amber-50 text-amber-600{% endif %} flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-heart-pulse"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-2xl sm:text-3xl font-bold {% if data.overall_health_pct >= 90 %}text-emerald-600{% else %}text-amber-600{% endif %}">
+                                {{ data.overall_health_pct }}%
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1 leading-normal">Kondisi operasional jalur</p>
+                        </div>
+                    </div>
+
+                    <div class="clean-card rounded-2xl p-5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Insiden Fiber Putus</span>
+                            <div class="w-8 h-8 rounded-lg {% if data.total_broken_segments > 0 %}bg-rose-50 text-rose-600{% else %}bg-emerald-50 text-emerald-600{% endif %} flex items-center justify-center text-xs">
+                                <i class="fa-solid {% if data.total_broken_segments > 0 %}fa-triangle-exclamation{% else %}fa-check{% endif %}"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="text-2xl sm:text-3xl font-bold {% if data.total_broken_segments > 0 %}text-rose-600{% else %}text-slate-900{% endif %}">
+                                {{ data.total_broken_segments }}
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1 leading-normal">{% if data.total_broken_segments > 0 %}Segmen memerlukan penanganan{% else %}Seluruh jalur aman terkendali{% endif %}</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION: FITUR TELEMETRI (#fitur) -->
+        <section id="fitur" class="py-16 sm:py-24 bg-white border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+                
+                <div class="text-center max-w-2xl mx-auto space-y-3">
+                    <span class="text-xs font-semibold text-pln-blue uppercase tracking-wider bg-blue-50 px-3.5 py-1 rounded-full border border-blue-200/80">
+                        Kemampuan Platform
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-snug">Fitur Utama Sistem NOC</h2>
+                    <p class="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed">
+                        Didesain secara profesional untuk efisiensi pemantauan teknisi transmisi dan operator NOC.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Feature Card 1 -->
+                    <div class="clean-card rounded-2xl p-7 space-y-4">
+                        <div class="w-11 h-11 rounded-xl bg-blue-50 text-pln-blue border border-blue-200/80 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-diagram-project"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">Visualisasi Topologi Per Ring</h3>
+                        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                            Pemetaan alur transmisi horizontal yang menghubungkan Gardu POP Awal, titik DCU perantara, dan Gardu POP Akhir secara rinci dan jelas.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 2 -->
+                    <div class="clean-card rounded-2xl p-7 space-y-4">
+                        <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-plug-circle-exclamation"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">Deteksi Kabel Putus Instant</h3>
+                        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                            Indikasi warna kontras (Hijau Aman vs Merah Putus) pada setiap segmen bentangan kabel untuk mempercepat pemeliharaan di lapangan.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 3 -->
+                    <div class="clean-card rounded-2xl p-7 space-y-4">
+                        <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">Otentikasi Dual-Role RBAC</h3>
+                        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                            Akses peran terstruktur. Administrator memiliki hak eksekusi edit & tambah data, sedangkan Viewer dibatasi dalam mode pemantauan saja.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 4 -->
+                    <div class="clean-card rounded-2xl p-7 space-y-4">
+                        <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 border border-purple-200/80 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-arrows-spin"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">Real-Time Event Stream (SSE)</h3>
+                        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                            Teknologi Server-Sent Events mengirimkan pembaruan status segmen ke seluruh browser operator secara langsung tanpa perlu reload halaman.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 5 -->
+                    <div class="clean-card rounded-2xl p-7 space-y-4">
+                        <div class="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 border border-sky-200/80 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">Integrasi Cloud Supabase</h3>
+                        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                            Dukungan penuh penyelarasan data ke PostgreSQL Supabase Cloud dengan cadangan SQLite lokal otomatis demi keandalan data.
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 6 -->
+                    <div class="clean-card rounded-2xl p-7 space-y-4">
+                        <div class="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 border border-teal-200/80 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-ruler-horizontal"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900">Kalkulasi Otomatis Bentangan DCU</h3>
+                        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                            Penambahan titik gardu DCU secara otomatis mewarisi dan menghitung ulang jarak bentangan meter demi akurasi pemetaan.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION: INFRASTRUKTUR RING SHOWCASE (#infrastruktur) -->
+        <section id="infrastruktur" class="py-16 sm:py-24 bg-slate-50 border-b border-slate-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <span class="text-xs font-semibold text-pln-blue uppercase tracking-wider">Infrastruktur Terdaftar</span>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 leading-snug">Overview Ring Jaringan Transmisi</h2>
+                        <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">Daftar ring utama kabel optik yang dipantau oleh NOC PLN Icon+</p>
+                    </div>
+                    {% if current_user and current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="px-5 py-2.5 bg-pln-blue hover:bg-pln-darkBlue text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs transition-all inline-flex items-center space-x-2 self-start sm:self-auto">
+                        <span>Buka Dashboard Lengkap</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('login') }}" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs transition-all inline-flex items-center space-x-2 self-start sm:self-auto">
+                        <i class="fa-solid fa-lock text-xs text-amber-400"></i>
+                        <span>Login untuk Akses Monitoring</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for item in data.rings[:6] %}
+                    <div class="clean-card rounded-2xl p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-900 text-xs font-semibold font-mono">
+                                {{ item.ring.code }}
+                            </span>
+                            {% if item.broken_segments > 0 %}
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                                TERPUTUS
+                            </span>
+                            {% else %}
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                OPTIMAL 100%
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 leading-snug">
+                                {{ item.ring.name }}
+                            </h3>
+                            <p class="text-xs text-slate-500 line-clamp-1 leading-relaxed mt-1">
+                                {{ item.ring.description or 'Jalur transmisi kabel optik gardu induk PLN' }}
+                            </p>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <span class="text-[10px] text-slate-500 uppercase block font-medium">Bentangan FO</span>
+                                <strong class="text-slate-900 font-semibold text-sm mt-0.5 block">{{ item.total_distance_km }} KM</strong>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-500 uppercase block font-medium">Node DCU</span>
+                                <strong class="text-slate-900 font-semibold text-sm mt-0.5 block">{{ item.dcu_count }} Gardu</strong>
+                            </div>
+                        </div>
+
+                        <div class="pt-1">
+                            {% if current_user and current_user.is_authenticated %}
+                            <a href="{{ url_for('monitoring_ring', ring_id=item.ring.id) }}" class="w-full text-center block py-2.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-pln-blue transition-colors">
+                                Lihat Topologi Detail &rarr;
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('login') }}" class="w-full text-center block py-2.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 transition-colors">
+                                <i class="fa-solid fa-lock text-[10px] mr-1 text-slate-400"></i> Login untuk Detail
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION: FAQ ACCORDION (#faq) -->
+        <section id="faq" class="py-16 sm:py-24 bg-white border-b border-slate-200">
+            <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+                
+                <div class="text-center space-y-3">
+                    <span class="text-xs font-semibold text-pln-blue uppercase tracking-wider bg-blue-50 px-3.5 py-1 rounded-full border border-blue-200/80">
+                        Pertanyaan Umum
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-snug">FAQ Telemetri NOC</h2>
+                    <p class="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed">
+                        Informasi lengkap mengenai akses login, otentikasi peran, dan pengawasan jaringan.
+                    </p>
+                </div>
+
+                <!-- Accordion List -->
+                <div class="space-y-4">
+                    
+                    <!-- FAQ 1 -->
+                    <div class="clean-card rounded-2xl overflow-hidden">
+                        <button type="button" onclick="toggleFaq(1)" class="w-full p-5 text-left font-bold text-slate-900 text-sm sm:text-base flex items-center justify-between focus:outline-none hover:bg-slate-50/80 transition-colors">
+                            <span class="flex items-center space-x-3">
+                                <i class="fa-regular fa-circle-question text-pln-blue text-base"></i>
+                                <span>Mengapa Halaman Dashboard Memerlukan Login?</span>
+                            </span>
+                            <i id="faqIcon-1" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
+                        </button>
+                        <div id="faqAnswer-1" class="hidden p-5 pt-0 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 font-normal">
+                            Demi menjaga privasi dan keamanan infrastruktur ketenagalistrikan serta transmisi fiber optik PLN Icon+, akses penuh ke Dashboard Monitoring dan detail skema ring hanya dapat dibuka oleh pengguna yang terautentikasi (Admin atau Viewer).
+                        </div>
+                    </div>
+
+                    <!-- FAQ 2 -->
+                    <div class="clean-card rounded-2xl overflow-hidden">
+                        <button type="button" onclick="toggleFaq(2)" class="w-full p-5 text-left font-bold text-slate-900 text-sm sm:text-base flex items-center justify-between focus:outline-none hover:bg-slate-50/80 transition-colors">
+                            <span class="flex items-center space-x-3">
+                                <i class="fa-regular fa-circle-question text-pln-blue text-base"></i>
+                                <span>Apa Perbedaan Peran Akun Admin dan Viewer?</span>
+                            </span>
+                            <i id="faqIcon-2" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
+                        </button>
+                        <div id="faqAnswer-2" class="hidden p-5 pt-0 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 font-normal">
+                            <strong>Admin NOC</strong> memiliki akses penuh untuk mengedit status segmen (Aman/Putus), menambah/menghapus ring, mengatur titik gardu DCU, serta mengelola pembuatan akun pengguna baru. Sedangkan <strong>Viewer</strong> hanya memiliki akses baca (read-only) untuk memantau kontinuitas tanpa dapat mengubah data.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 3 -->
+                    <div class="clean-card rounded-2xl overflow-hidden">
+                        <button type="button" onclick="toggleFaq(3)" class="w-full p-5 text-left font-bold text-slate-900 text-sm sm:text-base flex items-center justify-between focus:outline-none hover:bg-slate-50/80 transition-colors">
+                            <span class="flex items-center space-x-3">
+                                <i class="fa-regular fa-circle-question text-pln-blue text-base"></i>
+                                <span>Bagaimana Sistem Mendeteksi Kabel Putus secara Real-Time?</span>
+                            </span>
+                            <i id="faqIcon-3" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
+                        </button>
+                        <div id="faqAnswer-3" class="hidden p-5 pt-0 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 font-normal">
+                            Sistem mengintegrasikan teknologi Server-Sent Events (SSE). Ketika teknisi atau admin memperbarui status kendala pada salah satu segmen gardu, sinyal pembaruan dikirimkan seketika ke seluruh tampilan browser operator secara otomatis tanpa perlu memuat ulang halaman.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 4 -->
+                    <div class="clean-card rounded-2xl overflow-hidden">
+                        <button type="button" onclick="toggleFaq(4)" class="w-full p-5 text-left font-bold text-slate-900 text-sm sm:text-base flex items-center justify-between focus:outline-none hover:bg-slate-50/80 transition-colors">
+                            <span class="flex items-center space-x-3">
+                                <i class="fa-regular fa-circle-question text-pln-blue text-base"></i>
+                                <span>Apakah Kabel FO Menggunakan Spesifikasi Standar ADSS 24 Core?</span>
+                            </span>
+                            <i id="faqIcon-4" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
+                        </button>
+                        <div id="faqAnswer-4" class="hidden p-5 pt-0 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 font-normal">
+                            Ya, seluruh rute kabel optik pada sistem ini diselaraskan menggunakan standar spesifikasi ADSS 24 Core dan penamaan titik berbasis Gardu Induk / DCU PLN Icon+.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 5 -->
+                    <div class="clean-card rounded-2xl overflow-hidden">
+                        <button type="button" onclick="toggleFaq(5)" class="w-full p-5 text-left font-bold text-slate-900 text-sm sm:text-base flex items-center justify-between focus:outline-none hover:bg-slate-50/80 transition-colors">
+                            <span class="flex items-center space-x-3">
+                                <i class="fa-regular fa-circle-question text-pln-blue text-base"></i>
+                                <span>Bagaimana Jika Lupa Password atau Membutuhkan Akun Baru?</span>
+                            </span>
+                            <i id="faqIcon-5" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200"></i>
+                        </button>
+                        <div id="faqAnswer-5" class="hidden p-5 pt-0 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 font-normal">
+                            Pengguna dapat menghubungi Administrator NOC PT PLN Icon Plus yang bertugas untuk melakukan reset password atau pembuatan kredensial akun baru melalui menu Manajemen Pengguna.
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- CTA LOGIN BANNER SECTION -->
+        <section class="py-16 sm:py-24 bg-slate-50">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-pln-darkBlue rounded-3xl p-8 sm:p-12 text-center text-white space-y-5 shadow-md relative overflow-hidden">
+                    <div class="relative z-10 max-w-2xl mx-auto space-y-4">
+                        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight leading-snug">Siap Mengelola Operasional NOC PLN Icon+?</h2>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
+                            Silakan masuk dengan akun otentikasi Anda untuk mulai memantau skema topologi, mengelola titik gardu DCU, atau mengubah kontinuitas transmisi optik.
+                        </p>
+                        
+                        <div class="pt-3 flex justify-center">
+                            {% if current_user and current_user.is_authenticated %}
+                            <a href="{{ url_for('dashboard') }}" class="px-7 py-3 bg-pln-blue hover:bg-sky-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center space-x-2">
+                                <i class="fa-solid fa-gauge-high text-xs"></i>
+                                <span>Masuk ke Dashboard Monitoring</span>
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('login') }}" class="px-7 py-3 bg-pln-blue hover:bg-sky-500 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center space-x-2">
+                                <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                                <span>Masuk ke Portal Login</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Public Landing Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-8 text-xs text-slate-400">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <span class="font-bold text-white">PT PLN Icon Plus</span>
+                <span>&bull;</span>
+                <span>Network Operations Center (NOC) Portal</span>
+            </div>
+            <div class="text-slate-400 text-center sm:text-right">
+                &copy; 2026 PT PLN Icon Plus. Hak Cipta Dilindungi.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Live clock update
+        function updateLandingClock() {
+            const el = document.getElementById('landingClock');
+            if (!el) return;
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID', { hour12: false });
+            el.innerHTML = `<i class="fa-regular fa-clock text-xs mr-1 text-slate-400"></i><span>${timeStr} WIB</span>`;
+        }
+        setInterval(updateLandingClock, 1000);
+        updateLandingClock();
+
+        // FAQ Toggle Accordion
+        function toggleFaq(id) {
+            const answer = document.getElementById(`faqAnswer-${id}`);
+            const icon = document.getElementById(`faqIcon-${id}`);
+            if (!answer) return;
+
+            if (answer.classList.contains('hidden')) {
+                answer.classList.remove('hidden');
+                if (icon) icon.classList.add('rotate-180');
+            } else {
+                answer.classList.add('hidden');
+                if (icon) icon.classList.remove('rotate-180');
+            }
+        }
+
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+    </script>
+
+</body>
+</html>
