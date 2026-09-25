@@ -67,6 +67,7 @@ def check_supabase_tables():
         return False
     try:
         supabase_client.table('rings').select('id').limit(1).execute()
+        supabase_client.table('users').select('id').limit(1).execute()
         return True
     except Exception:
         return False
@@ -92,21 +93,8 @@ def get_storage_mode():
 # INITIALIZATION & SEEDING
 # ==============================================================================
 
-def init_db():
-    mode = get_storage_mode()
-    if mode == 'SUPABASE':
-        try:
-            # Check if rings table exists in Supabase
-            res = supabase_client.table('rings').select('id').limit(1).execute()
-            # If empty, seed initial data to Supabase
-            count_res = supabase_client.table('rings').select('id', count='exact').execute()
-            if count_res.count == 0 or len(count_res.data) == 0:
-                seed_supabase_data()
-        except Exception as e:
-            print(f"Notice during Supabase check: {e}")
-            print("If tables are not created yet, please run supabase_schema.sql in Supabase SQL Editor.")
-    else:
-        # SQLite local fallback
+def ensure_sqlite_tables():
+    try:
         conn = get_sqlite()
         cursor = conn.cursor()
         cursor.execute("""
@@ -181,6 +169,23 @@ def init_db():
         if cursor.fetchone()['count'] == 0:
             seed_sqlite_data(conn)
         conn.close()
+    except Exception as e:
+        print(f"Notice during SQLite tables setup: {e}")
+
+def init_db():
+    ensure_sqlite_tables()
+    mode = get_storage_mode()
+    if mode == 'SUPABASE':
+        try:
+            # Check if rings table exists in Supabase
+            res = supabase_client.table('rings').select('id').limit(1).execute()
+            # If empty, seed initial data to Supabase
+            count_res = supabase_client.table('rings').select('id', count='exact').execute()
+            if count_res.count == 0 or len(count_res.data) == 0:
+                seed_supabase_data()
+        except Exception as e:
+            print(f"Notice during Supabase check: {e}")
+            print("If tables are not created yet, please run supabase_schema.sql in Supabase SQL Editor.")
     
     seed_default_users()
 
@@ -351,15 +356,25 @@ def seed_supabase_data():
 def get_all_rings():
     mode = get_storage_mode()
     if mode == 'SUPABASE':
-        res = supabase_client.table('rings').select('*').order('id', desc=False).execute()
-        return res.data
-    else:
+        try:
+            res = supabase_client.table('rings').select('*').order('id', desc=False).execute()
+            if res.data is not None:
+                return res.data
+        except Exception as e:
+            print(f"Supabase error in get_all_rings: {e}")
+            pass
+            
+    try:
+        ensure_sqlite_tables()
         conn = get_sqlite()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM rings ORDER BY id ASC")
         rows = [dict(r) for r in cursor.fetchall()]
         conn.close()
         return rows
+    except Exception as e:
+        print(f"SQLite error in get_all_rings: {e}")
+        return []
 
 def get_dashboard_data():
     mode = get_storage_mode()
@@ -469,86 +484,103 @@ def get_dashboard_data():
             pass
 
     # SQLite fallback
-    conn = get_sqlite()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM rings ORDER BY id ASC")
-    rings = [dict(row) for row in cursor.fetchall()]
+    try:
+        ensure_sqlite_tables()
+        conn = get_sqlite()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM rings ORDER BY id ASC")
+        rings = [dict(row) for row in cursor.fetchall()]
 
-    grand_total_distance_m = 0.0
-    grand_safe_distance_m = 0.0
-    total_segments_all = 0
-    total_broken_segments_all = 0
-    total_issues_all = 0
-    ring_summaries = []
+        grand_total_distance_m = 0.0
+        grand_safe_distance_m = 0.0
+        total_segments_all = 0
+        total_broken_segments_all = 0
+        total_issues_all = 0
+        ring_summaries = []
 
-    for r in rings:
-        ring_id = r['id']
-        cursor.execute("SELECT * FROM segments WHERE ring_id = ? ORDER BY position_order ASC", (ring_id,))
-        segments = [dict(s) for s in cursor.fetchall()]
-        cursor.execute("SELECT * FROM nodes WHERE ring_id = ? ORDER BY position_order ASC", (ring_id,))
-        nodes = [dict(n) for n in cursor.fetchall()]
-        cursor.execute("SELECT COUNT(*) as count FROM issues WHERE ring_id = ? AND status != 'SELESAI'", (ring_id,))
-        open_issues_count = cursor.fetchone()['count']
-        total_issues_all += open_issues_count
+        for r in rings:
+            ring_id = r['id']
+            cursor.execute("SELECT * FROM segments WHERE ring_id = ? ORDER BY position_order ASC", (ring_id,))
+            segments = [dict(s) for s in cursor.fetchall()]
+            cursor.execute("SELECT * FROM nodes WHERE ring_id = ? ORDER BY position_order ASC", (ring_id,))
+            nodes = [dict(n) for n in cursor.fetchall()]
+            cursor.execute("SELECT COUNT(*) as count FROM issues WHERE ring_id = ? AND status != 'SELESAI'", (ring_id,))
+            open_issues_count = cursor.fetchone()['count']
+            total_issues_all += open_issues_count
 
-        total_dist = sum(s['distance_m'] for s in segments)
-        safe_dist = sum(s['distance_m'] for s in segments if s['status'] == 'AMAN')
-        broken_dist = sum(s['distance_m'] for s in segments if s['status'] == 'PUTUS')
-        broken_count = sum(1 for s in segments if s['status'] == 'PUTUS')
-        safe_count = sum(1 for s in segments if s['status'] == 'AMAN')
+            total_dist = sum(s['distance_m'] for s in segments)
+            safe_dist = sum(s['distance_m'] for s in segments if s['status'] == 'AMAN')
+            broken_dist = sum(s['distance_m'] for s in segments if s['status'] == 'PUTUS')
+            broken_count = sum(1 for s in segments if s['status'] == 'PUTUS')
+            safe_count = sum(1 for s in segments if s['status'] == 'AMAN')
 
-        grand_total_distance_m += total_dist
-        grand_safe_distance_m += safe_dist
-        total_segments_all += len(segments)
-        total_broken_segments_all += broken_count
+            grand_total_distance_m += total_dist
+            grand_safe_distance_m += safe_dist
+            total_segments_all += len(segments)
+            total_broken_segments_all += broken_count
 
-        progress_pct = round((safe_dist / total_dist * 100), 1) if total_dist > 0 else 100.0
-        pop1 = next((n for n in nodes if n['node_type'] == 'POP_START'), None)
-        pop2 = next((n for n in nodes if n['node_type'] == 'POP_END'), None)
-        dcu_count = sum(1 for n in nodes if n['node_type'] not in ('POP_START', 'POP_END'))
+            progress_pct = round((safe_dist / total_dist * 100), 1) if total_dist > 0 else 100.0
+            pop1 = next((n for n in nodes if n['node_type'] == 'POP_START'), None)
+            pop2 = next((n for n in nodes if n['node_type'] == 'POP_END'), None)
+            dcu_count = sum(1 for n in nodes if n['node_type'] not in ('POP_START', 'POP_END'))
 
-        ring_summaries.append({
-            'ring': r,
-            'total_distance_m': total_dist,
-            'total_distance_km': round(total_dist / 1000.0, 2),
-            'safe_distance_km': round(safe_dist / 1000.0, 2),
-            'broken_distance_km': round(broken_dist / 1000.0, 2),
-            'total_segments': len(segments),
-            'safe_segments': safe_count,
-            'broken_segments': broken_count,
-            'progress_pct': progress_pct,
-            'open_issues_count': open_issues_count,
-            'dcu_count': dcu_count,
-            'pop1_name': pop1['name'] if pop1 else 'POP 1',
-            'pop2_name': pop2['name'] if pop2 else 'POP 2',
-            'status_label': 'CRITICAL / PUTUS' if broken_count > 0 else 'NORMAL / AMAN'
-        })
+            ring_summaries.append({
+                'ring': r,
+                'total_distance_m': total_dist,
+                'total_distance_km': round(total_dist / 1000.0, 2),
+                'safe_distance_km': round(safe_dist / 1000.0, 2),
+                'broken_distance_km': round(broken_dist / 1000.0, 2),
+                'total_segments': len(segments),
+                'safe_segments': safe_count,
+                'broken_segments': broken_count,
+                'progress_pct': progress_pct,
+                'open_issues_count': open_issues_count,
+                'dcu_count': dcu_count,
+                'pop1_name': pop1['name'] if pop1 else 'POP 1',
+                'pop2_name': pop2['name'] if pop2 else 'POP 2',
+                'status_label': 'CRITICAL / PUTUS' if broken_count > 0 else 'NORMAL / AMAN'
+            })
 
-    overall_health_pct = round((grand_safe_distance_m / grand_total_distance_m * 100), 1) if grand_total_distance_m > 0 else 100.0
-    cursor.execute("""
-        SELECT i.*, r.name as ring_name, r.code as ring_code
-        FROM issues i
-        JOIN rings r ON i.ring_id = r.id
-        WHERE i.status != 'SELESAI'
-        ORDER BY i.created_at DESC
-        LIMIT 10
-    """)
-    recent_issues = [dict(row) for row in cursor.fetchall()]
-    conn.close()
+        overall_health_pct = round((grand_safe_distance_m / grand_total_distance_m * 100), 1) if grand_total_distance_m > 0 else 100.0
+        cursor.execute("""
+            SELECT i.*, r.name as ring_name, r.code as ring_code
+            FROM issues i
+            JOIN rings r ON i.ring_id = r.id
+            WHERE i.status != 'SELESAI'
+            ORDER BY i.created_at DESC
+            LIMIT 10
+        """)
+        recent_issues = [dict(row) for row in cursor.fetchall()]
+        conn.close()
 
-    return {
-        'storage_mode': 'SQLITE',
-        'total_rings': len(rings),
-        'total_distance_m': grand_total_distance_m,
-        'total_distance_km': round(grand_total_distance_m / 1000.0, 2),
-        'overall_health_pct': overall_health_pct,
-        'total_broken_segments': total_broken_segments_all,
-        'total_safe_segments': total_segments_all - total_broken_segments_all,
-        'total_segments': total_segments_all,
-        'total_issues_count': total_issues_all,
-        'rings': ring_summaries,
-        'recent_issues': recent_issues
-    }
+        return {
+            'storage_mode': 'SQLITE',
+            'total_rings': len(rings),
+            'total_distance_m': grand_total_distance_m,
+            'total_distance_km': round(grand_total_distance_m / 1000.0, 2),
+            'overall_health_pct': overall_health_pct,
+            'total_broken_segments': total_broken_segments_all,
+            'total_safe_segments': total_segments_all - total_broken_segments_all,
+            'total_segments': total_segments_all,
+            'total_issues_count': total_issues_all,
+            'rings': ring_summaries,
+            'recent_issues': recent_issues
+        }
+    except Exception as e:
+        print(f"SQLite error in get_dashboard_data: {e}")
+        return {
+            'storage_mode': 'SQLITE',
+            'total_rings': 0,
+            'total_distance_m': 0.0,
+            'total_distance_km': 0.0,
+            'overall_health_pct': 100.0,
+            'total_broken_segments': 0,
+            'total_safe_segments': 0,
+            'total_segments': 0,
+            'total_issues_count': 0,
+            'rings': [],
+            'recent_issues': []
+        }
 
 def get_ring_detail(ring_id):
     ring_id = int(ring_id)
@@ -1452,6 +1484,7 @@ def get_user_by_username(username):
             pass
     
     try:
+        ensure_sqlite_tables()
         conn = get_sqlite()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE LOWER(username) = ?", (username,))
@@ -1478,6 +1511,7 @@ def get_user_by_id(user_id):
             pass
             
     try:
+        ensure_sqlite_tables()
         conn = get_sqlite()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
