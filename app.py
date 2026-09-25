@@ -246,6 +246,18 @@ def api_dashboard():
     data = database.get_dashboard_data()
     return jsonify(data)
 
+@app.route('/api/seed', methods=['POST', 'GET'])
+@admin_required
+def api_seed_data():
+    try:
+        database.seed_supabase_data()
+        database.ensure_sqlite_tables()
+        database.seed_default_users()
+        database.invalidate_storage_mode_cache()
+        return jsonify({'success': True, 'message': 'Data sampel berhasil di-seed ke database!'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/rings', methods=['GET', 'POST'])
 @login_required
 def api_rings():
