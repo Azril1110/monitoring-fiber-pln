@@ -67,7 +67,6 @@ def check_supabase_tables():
         return False
     try:
         supabase_client.table('rings').select('id').limit(1).execute()
-        supabase_client.table('users').select('id').limit(1).execute()
         return True
     except Exception:
         return False
