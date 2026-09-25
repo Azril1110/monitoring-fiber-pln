@@ -24,13 +24,29 @@ if is_supabase_configured():
         print(f"Warning: Failed to initialize Supabase client: {e}")
         supabase_client = None
 
-# SQLite fallback path
-SQLITE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'monitoring_pln.db')
+# Check if running in Vercel / serverless environment
+IS_VERCEL = bool(os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME'))
+
+# SQLite fallback path (Use /tmp on Vercel to avoid Read-Only filesystem crash)
+if IS_VERCEL:
+    SQLITE_PATH = '/tmp/monitoring_pln.db'
+    ORIGINAL_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'monitoring_pln.db')
+    if not os.path.exists(SQLITE_PATH) and os.path.exists(ORIGINAL_DB):
+        try:
+            import shutil
+            shutil.copy2(ORIGINAL_DB, SQLITE_PATH)
+        except Exception as e:
+            print(f"Warning: Failed to copy DB to /tmp: {e}")
+else:
+    SQLITE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'monitoring_pln.db')
 
 def get_sqlite():
     conn = sqlite3.connect(SQLITE_PATH)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
+    try:
+        conn.execute("PRAGMA foreign_keys = ON;")
+    except Exception:
+        pass
     return conn
 
 import time
